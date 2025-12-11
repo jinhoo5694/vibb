@@ -5,7 +5,6 @@ import {
   Box,
   Typography,
   Divider,
-  Paper,
   Alert,
   Button,
 } from '@mui/material';
@@ -213,7 +212,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
       )}
 
       {/* Comment Form or Sign In Prompt */}
-      <Paper elevation={0} sx={{ p: 3, mb: 4, backgroundColor: 'background.default' }}>
+      <Box sx={{ mb: 4 }}>
         {user ? (
           hasCommented ? (
             <Alert severity="info">
@@ -228,7 +227,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
             </>
           )
         ) : (
-          <Box sx={{ textAlign: 'center', py: 2 }}>
+          <Box sx={{ textAlign: 'center', py: 3 }}>
             <Typography variant="body1" color="text.secondary" gutterBottom>
               {t('comments.section.signInPrompt')}
             </Typography>
@@ -242,7 +241,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
             </Button>
           </Box>
         )}
-      </Paper>
+      </Box>
 
       {/* Comments List */}
       <CommentList

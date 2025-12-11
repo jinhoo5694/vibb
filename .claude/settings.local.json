@@ -9,7 +9,8 @@
       "Bash(scoop bucket add:*)",
       "Bash(scoop install:*)",
       "Bash(curl:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

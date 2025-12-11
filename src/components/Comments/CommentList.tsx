@@ -57,7 +57,7 @@ export const CommentList: React.FC<CommentListProps> = ({
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       {comments.map((comment) => (
         <CommentThread
           key={comment.id}

@@ -36,7 +36,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
       />
       {/* Render nested replies with indentation */}
       {comment.replies && comment.replies.length > 0 && (
-        <Box sx={{ ml: { xs: 2, sm: 4 }, mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ ml: { xs: 2, sm: 4 }, borderLeft: '2px solid', borderColor: 'divider', pl: 2 }}>
           {comment.replies.map((reply) => (
             <CommentThread
               key={reply.id}

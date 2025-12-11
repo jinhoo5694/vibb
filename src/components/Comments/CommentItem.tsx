@@ -103,12 +103,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   return (
     <Box
       sx={{
-        p: 2,
-        borderRadius: 2,
-        backgroundColor: theme.palette.background.paper,
-        border: `1px solid ${theme.palette.divider}`,
-        '&:hover': {
-          borderColor: theme.palette.primary.main,
+        py: 2,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        '&:last-child': {
+          borderBottom: 'none',
         },
       }}
     >

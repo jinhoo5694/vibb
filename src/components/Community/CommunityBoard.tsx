@@ -59,7 +59,7 @@ const boardTypeToCategory: Record<BoardType, PostCategory> = {
   skill: '스킬',
   mcp: 'MCP',
   prompt: '프롬프트',
-  ai_tool: 'AI 도구',
+  ai_tool: 'AI 코딩 툴',
   general: '커뮤니티',
 };
 

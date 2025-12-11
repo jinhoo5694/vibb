@@ -400,23 +400,16 @@ export default function PostDetailPage() {
         </Paper>
 
         {/* Comments Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-            overflow: 'hidden',
-          }}
-        >
+        <Box sx={{ mt: 4 }}>
           {/* Comment Header */}
-          <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+          <Box sx={{ mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               {language === 'ko' ? '댓글' : 'Comments'} ({comments.length})
             </Typography>
           </Box>
 
           {/* New Comment Input */}
-          <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+          <Box sx={{ mb: 3 }}>
             {user ? (
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 40, height: 40 }}>
@@ -448,7 +441,7 @@ export default function PostDetailPage() {
                 </Box>
               </Box>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Box sx={{ textAlign: 'center', py: 3 }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   {language === 'ko' ? '댓글을 작성하려면 로그인하세요' : 'Sign in to write a comment'}
                 </Typography>
@@ -460,7 +453,7 @@ export default function PostDetailPage() {
           </Box>
 
           {/* Comments List */}
-          <Box>
+          <Box sx={{ borderTop: `1px solid ${theme.palette.divider}`, pt: 2 }}>
             {comments.length > 0 ? (
               comments.map((comment, index) => (
                 <motion.div
@@ -471,11 +464,8 @@ export default function PostDetailPage() {
                 >
                   <Box
                     sx={{
-                      p: 2,
+                      py: 2,
                       borderBottom: index < comments.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
-                      '&:hover': {
-                        bgcolor: theme.palette.action.hover,
-                      },
                     }}
                   >
                     <Box sx={{ display: 'flex', gap: 2 }}>
@@ -515,14 +505,14 @@ export default function PostDetailPage() {
                 </motion.div>
               ))
             ) : (
-              <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Box sx={{ py: 4, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
                   {language === 'ko' ? '아직 댓글이 없습니다. 첫 댓글을 작성해보세요!' : 'No comments yet. Be the first to comment!'}
                 </Typography>
               </Box>
             )}
           </Box>
-        </Paper>
+        </Box>
 
         {/* Back Button */}
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
