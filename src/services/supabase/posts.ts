@@ -7,8 +7,8 @@ const categoryToContentType: Record<PostCategory, string> = {
   '스킬': 'skill',
   'MCP': 'mcp',
   '프롬프트': 'prompt',
-  'AI 도구': 'ai_tool',
-  '자유게시판': 'post',
+  'AI 코딩 툴': 'ai_tool',
+  '커뮤니티': 'post',
   '질문': 'post',
 };
 
@@ -17,11 +17,11 @@ function contentToPost(content: ContentWithRelations): Post {
   const metadata = content.metadata || {};
 
   // Determine category from content type and metadata
-  let category: PostCategory = '자유게시판';
+  let category: PostCategory = '커뮤니티';
   if (content.type === 'skill') category = '스킬';
   else if (content.type === 'mcp') category = 'MCP';
   else if (content.type === 'prompt') category = '프롬프트';
-  else if (content.type === 'ai_tool') category = 'AI 도구';
+  else if (content.type === 'ai_tool') category = 'AI 코딩 툴';
   else if (metadata.post_category === 'question') category = '질문';
 
   return {

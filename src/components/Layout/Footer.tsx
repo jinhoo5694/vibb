@@ -21,7 +21,7 @@ export const Footer: React.FC = () => {
         { label: '스킬', href: '/skills' },
         { label: 'MCP', href: '/mcp' },
         { label: '프롬프트', href: '/prompt' },
-        { label: 'AI 도구', href: '/ai-tools' },
+        { label: 'AI 코딩 툴', href: '/ai-tools' },
       ],
     },
     {

@@ -60,7 +60,7 @@ const boardTypeToCategory: Record<BoardType, PostCategory> = {
   mcp: 'MCP',
   prompt: '프롬프트',
   ai_tool: 'AI 도구',
-  general: '자유게시판',
+  general: '커뮤니티',
 };
 
 // Compact post item for popular section
@@ -203,14 +203,15 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const postsPerPage = 20;
 
-  // For general board, show 자유게시판 and 질문
+  // For general board, show all posts
   // For category-specific boards, show only that category's posts
   const isGeneralBoard = boardType === 'general';
   const mainCategory = boardTypeToCategory[boardType];
 
   // Default sub-categories based on board type
+  // For general board (Community), show ALL categories
   const defaultSubCategories: PostCategory[] = isGeneralBoard
-    ? ['자유게시판', '질문']
+    ? ['스킬', 'MCP', '프롬프트', 'AI 코딩 툴', '커뮤니티', '질문']
     : [mainCategory];
 
   const categories = subCategories || defaultSubCategories;
@@ -237,10 +238,8 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
           // Fall back to sample data filtered by board category
           let filteredSamplePosts: Post[];
           if (isGeneralBoard) {
-            // General board shows 자유게시판 and 질문
-            filteredSamplePosts = samplePosts.filter(
-              p => p.category === '자유게시판' || p.category === '질문'
-            );
+            // General board shows ALL posts
+            filteredSamplePosts = samplePosts;
           } else {
             // Category-specific boards show only their category
             filteredSamplePosts = samplePosts.filter(
@@ -255,9 +254,8 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
         // Fall back to sample data
         let filteredSamplePosts: Post[];
         if (isGeneralBoard) {
-          filteredSamplePosts = samplePosts.filter(
-            p => p.category === '자유게시판' || p.category === '질문'
-          );
+          // General board shows ALL posts
+          filteredSamplePosts = samplePosts;
         } else {
           filteredSamplePosts = samplePosts.filter(
             p => p.category === mainCategory
@@ -346,7 +344,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   return (
     <Box sx={{ minHeight: '50vh' }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography
           variant="h4"
           sx={{
@@ -365,6 +363,181 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
             {subtitle}
           </Typography>
         )}
+      </Box>
+
+      {/* Controls Bar - Search, Sort, Filter, Add */}
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}
+      >
+        {/* Top Row: Search + Add Button */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder={language === 'ko' ? '검색...' : 'Search...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 1.5,
+                bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+                '&:hover': {
+                  bgcolor: theme.palette.mode === 'dark' ? '#222' : '#fafafa',
+                },
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
+                </InputAdornment>
+              ),
+              endAdornment: searchQuery && (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                    <CloseIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreatePost}
+            sx={{
+              bgcolor: '#ff6b35',
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2,
+              borderRadius: 1.5,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              '&:hover': {
+                bgcolor: '#e55a2b',
+              },
+            }}
+          >
+            {language === 'ko' ? '글쓰기' : 'Write'}
+          </Button>
+        </Box>
+
+        {/* Bottom Row: Sort + Categories */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Sort Section */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+              {language === 'ko' ? '정렬' : 'Sort'}
+            </Typography>
+            <ToggleButtonGroup
+              value={sortBy}
+              exclusive
+              onChange={handleSortChange}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.25,
+                  gap: 0.5,
+                  fontSize: '0.8rem',
+                  borderColor: theme.palette.divider,
+                  '&.Mui-selected': {
+                    bgcolor: '#ff6b35',
+                    color: '#fff',
+                    borderColor: '#ff6b35',
+                    '&:hover': {
+                      bgcolor: '#e55a2b',
+                    },
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="hot">
+                <HotIcon sx={{ fontSize: 14 }} />
+                {language === 'ko' ? '인기' : 'Hot'}
+              </ToggleButton>
+              <ToggleButton value="new">
+                <NewIcon sx={{ fontSize: 14 }} />
+                {language === 'ko' ? '최신' : 'New'}
+              </ToggleButton>
+              <ToggleButton value="top">
+                <TopIcon sx={{ fontSize: 14 }} />
+                {language === 'ko' ? '추천' : 'Top'}
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          {/* Category Section */}
+          {showSubCategories && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                {language === 'ko' ? '필터' : 'Filter'}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                <Chip
+                  label={language === 'ko' ? '전체' : 'All'}
+                  size="small"
+                  onClick={() => setSelectedSubCategory('all')}
+                  variant={selectedSubCategory === 'all' ? 'filled' : 'outlined'}
+                  sx={{
+                    fontWeight: selectedSubCategory === 'all' ? 600 : 400,
+                    fontSize: '0.75rem',
+                    height: 26,
+                    bgcolor: selectedSubCategory === 'all' ? theme.palette.mode === 'dark' ? '#444' : '#333' : 'transparent',
+                    color: selectedSubCategory === 'all' ? '#fff' : 'text.secondary',
+                    borderColor: theme.palette.divider,
+                    '&:hover': {
+                      bgcolor: selectedSubCategory === 'all'
+                        ? theme.palette.mode === 'dark' ? '#555' : '#444'
+                        : theme.palette.action.hover,
+                    },
+                  }}
+                />
+                {categories.map((category) => {
+                  const color = categoryColors[category];
+                  const icon = categoryIcons[category];
+                  const isSelected = selectedSubCategory === category;
+
+                  return (
+                    <Chip
+                      key={category}
+                      label={`${icon} ${category}`}
+                      size="small"
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      onClick={() => setSelectedSubCategory(category)}
+                      sx={{
+                        fontWeight: isSelected ? 600 : 400,
+                        fontSize: '0.75rem',
+                        height: 26,
+                        bgcolor: isSelected ? color : 'transparent',
+                        color: isSelected ? '#fff' : 'text.secondary',
+                        borderColor: isSelected ? color : theme.palette.divider,
+                        '&:hover': {
+                          bgcolor: isSelected ? color : `${color}20`,
+                          borderColor: color,
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* Sample data notice */}
@@ -400,110 +573,6 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
         >
           {/* Main Content Area */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            {/* Sort & Filter Bar */}
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: 2,
-                mb: 3,
-                p: 2,
-                borderRadius: 2,
-                bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              {/* Sort Options */}
-              <ToggleButtonGroup
-                value={sortBy}
-                exclusive
-                onChange={handleSortChange}
-                size="small"
-                sx={{
-                  '& .MuiToggleButton-root': {
-                    textTransform: 'none',
-                    px: 2,
-                    gap: 0.5,
-                    borderColor: theme.palette.divider,
-                    '&.Mui-selected': {
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 107, 53, 0.15)' : 'rgba(255, 107, 53, 0.1)',
-                      color: '#ff6b35',
-                      borderColor: '#ff6b35',
-                      '&:hover': {
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 107, 53, 0.25)' : 'rgba(255, 107, 53, 0.15)',
-                      },
-                    },
-                  },
-                }}
-              >
-                <ToggleButton value="hot">
-                  <HotIcon sx={{ fontSize: 18 }} />
-                  {!isMobile && (language === 'ko' ? '인기' : 'Hot')}
-                </ToggleButton>
-                <ToggleButton value="new">
-                  <NewIcon sx={{ fontSize: 18 }} />
-                  {!isMobile && (language === 'ko' ? '최신' : 'New')}
-                </ToggleButton>
-                <ToggleButton value="top">
-                  <TopIcon sx={{ fontSize: 18 }} />
-                  {!isMobile && (language === 'ko' ? '추천순' : 'Top')}
-                </ToggleButton>
-              </ToggleButtonGroup>
-
-              {/* Sub-category Filter */}
-              {showSubCategories && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    flexWrap: 'wrap',
-                    flex: 1,
-                  }}
-                >
-                  {/* All chip */}
-                  <Chip
-                    label={`🏠 ${language === 'ko' ? '전체' : 'All'}`}
-                    size="small"
-                    onClick={() => setSelectedSubCategory('all')}
-                    sx={{
-                      fontWeight: selectedSubCategory === 'all' ? 700 : 500,
-                      fontSize: '0.8rem',
-                      bgcolor: selectedSubCategory === 'all' ? `${theme.palette.primary.main}20` : 'transparent',
-                      color: selectedSubCategory === 'all' ? theme.palette.primary.main : 'text.secondary',
-                      border: `1px solid ${selectedSubCategory === 'all' ? theme.palette.primary.main : 'transparent'}`,
-                      '&:hover': {
-                        bgcolor: `${theme.palette.primary.main}15`,
-                      },
-                    }}
-                  />
-
-                  {categories.map((category) => {
-                    const color = categoryColors[category];
-                    const icon = categoryIcons[category];
-                    const isSelected = selectedSubCategory === category;
-
-                    return (
-                      <Chip
-                        key={category}
-                        label={`${icon} ${category}`}
-                        size="small"
-                        onClick={() => setSelectedSubCategory(category)}
-                        sx={{
-                          fontWeight: isSelected ? 700 : 500,
-                          fontSize: '0.8rem',
-                          bgcolor: isSelected ? `${color}20` : 'transparent',
-                          color: isSelected ? color : 'text.secondary',
-                          border: `1px solid ${isSelected ? color : 'transparent'}`,
-                          '&:hover': {
-                            bgcolor: `${color}15`,
-                          },
-                        }}
-                      />
-                    );
-                  })}
-                </Box>
-              )}
-            </Box>
 
             {/* Posts List - DC Inside style table */}
             {paginatedPosts.length > 0 ? (
@@ -581,69 +650,6 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
               </Box>
             )}
 
-            {/* Search Bar & Add Post Button - Bottom Section */}
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: 2,
-                mt: 3,
-                p: 2,
-                borderRadius: 1,
-                bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              {/* Search Input */}
-              <TextField
-                size="small"
-                placeholder={language === 'ko' ? '제목, 작성자, 내용 검색...' : 'Search title, author, content...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{
-                  flex: 1,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 1,
-                    bgcolor: theme.palette.mode === 'dark' ? '#0a0a0a' : '#f8fafc',
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchQuery('')}>
-                        <CloseIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              {/* Add Post Button */}
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleCreatePost}
-                sx={{
-                  bgcolor: '#ff6b35',
-                  color: '#fff',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  borderRadius: 1,
-                  whiteSpace: 'nowrap',
-                  '&:hover': {
-                    bgcolor: '#e55a2b',
-                  },
-                }}
-              >
-                {language === 'ko' ? '글쓰기' : 'Write'}
-              </Button>
-            </Box>
           </Box>
 
           {/* Sidebar - Popular Posts (DC Inside style) */}

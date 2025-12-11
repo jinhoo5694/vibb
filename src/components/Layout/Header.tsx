@@ -28,7 +28,6 @@ import {
   Brightness7,
   Menu as MenuIcon,
   Close as CloseIcon,
-  Language as LanguageIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
   Home as HomeIcon,
@@ -52,7 +51,6 @@ import {
 
 // Sub-menu items for each section
 const skillsSubMenu = [
-  { label: '커뮤니티', labelEn: 'Community', href: '/skills', icon: <ForumIcon fontSize="small" />, description: '스킬 커뮤니티', descriptionEn: 'Skills community board' },
   { label: '스킬 탐색', labelEn: 'Explore', href: '/skills/explore', icon: <ExploreIcon fontSize="small" />, description: '모든 스킬 보기', descriptionEn: 'Browse all skills' },
   { label: '카테고리', labelEn: 'Categories', href: '/skills/categories', icon: <CategoryIcon fontSize="small" />, description: '카테고리별 탐색', descriptionEn: 'Browse by category' },
   { label: '스킬 소개', labelEn: 'About Skills', href: '/skills/hub', icon: <InfoIcon fontSize="small" />, description: '클로드 스킬이란?', descriptionEn: 'What are Claude Skills?' },
@@ -60,18 +58,15 @@ const skillsSubMenu = [
 ];
 
 const mcpSubMenu = [
-  { label: '커뮤니티', labelEn: 'Community', href: '/mcp', icon: <ForumIcon fontSize="small" />, description: 'MCP 커뮤니티', descriptionEn: 'MCP community board' },
   { label: 'MCP 소개', labelEn: 'About MCP', href: '/mcp/hub', icon: <InfoIcon fontSize="small" />, description: 'MCP란?', descriptionEn: 'What is MCP?' },
 ];
 
 const promptSubMenu = [
-  { label: '커뮤니티', labelEn: 'Community', href: '/prompt', icon: <ForumIcon fontSize="small" />, description: '프롬프트 커뮤니티', descriptionEn: 'Prompt community board' },
   { label: '프롬프트 소개', labelEn: 'About Prompts', href: '/prompt/hub', icon: <InfoIcon fontSize="small" />, description: '프롬프트란?', descriptionEn: 'What are Prompts?' },
 ];
 
 const aiToolsSubMenu = [
-  { label: '커뮤니티', labelEn: 'Community', href: '/ai-tools', icon: <ForumIcon fontSize="small" />, description: 'AI 도구 커뮤니티', descriptionEn: 'AI Tools community board' },
-  { label: 'AI 도구 소개', labelEn: 'About AI Tools', href: '/ai-tools/hub', icon: <InfoIcon fontSize="small" />, description: 'AI 도구란?', descriptionEn: 'What are AI Tools?' },
+  { label: 'AI 코딩 툴 소개', labelEn: 'About AI Coding Tools', href: '/ai-tools/hub', icon: <InfoIcon fontSize="small" />, description: 'AI 코딩 툴이란?', descriptionEn: 'What are AI Coding Tools?' },
 ];
 
 // Map of submenus by href
@@ -84,7 +79,7 @@ const subMenuMap: Record<string, typeof skillsSubMenu> = {
 
 export const Header: React.FC = () => {
   const { mode, toggleTheme } = useThemeContext();
-  const { language, setLanguage, t } = useLanguage();
+  const { language } = useLanguage();
   const { user, loading, signInWithGoogle, signOut } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -103,10 +98,6 @@ export const Header: React.FC = () => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null);
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'ko' ? 'en' : 'ko');
-  };
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -186,11 +177,12 @@ export const Header: React.FC = () => {
 
   const navigationItems = [
     { label: '홈', labelEn: 'Home', href: '/', icon: <HomeIcon /> },
-    { label: '스킬', labelEn: 'Skills', href: '/skills', icon: <SkillsIcon />, hasSubmenu: true },
-    { label: 'MCP', labelEn: 'MCP', href: '/mcp', icon: <CategoryIcon />, hasSubmenu: true },
+    { label: '커뮤니티', labelEn: 'Community', href: '/board', icon: <ForumIcon /> },
+    { label: 'AI 코딩 툴', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon />, hasSubmenu: true },
     { label: '프롬프트', labelEn: 'Prompt', href: '/prompt', icon: <ExploreIcon />, hasSubmenu: true },
-    { label: 'AI 도구', labelEn: 'AI Tools', href: '/ai-tools', icon: <ExploreIcon />, hasSubmenu: true },
-    { label: '자유게시판', labelEn: 'Board', href: '/board', icon: <ForumIcon /> },
+    { label: 'MCP', labelEn: 'MCP', href: '/mcp', icon: <CategoryIcon />, hasSubmenu: true },
+    { label: '스킬', labelEn: 'Skills', href: '/skills', icon: <SkillsIcon />, hasSubmenu: true },
+    { label: '뉴스', labelEn: 'News', href: '/news', icon: <ExploreIcon /> },
   ];
 
   return (
@@ -380,18 +372,9 @@ export const Header: React.FC = () => {
               </Box>
             )}
 
-            {/* Desktop: Language, Auth, and Theme Toggle */}
+            {/* Desktop: Auth and Theme Toggle */}
             {!isMobile && (
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Button
-                  color="inherit"
-                  onClick={toggleLanguage}
-                  startIcon={<LanguageIcon />}
-                  sx={{ minWidth: 'auto', px: 2 }}
-                >
-                  {language === 'ko' ? 'EN' : 'KO'}
-                </Button>
-
                 {/* Auth Section */}
                 {typeof window === 'undefined' || loading ? (
                   <Box sx={{ width: 40, height: 40 }} />
@@ -598,14 +581,6 @@ export const Header: React.FC = () => {
 
           {/* Settings Section */}
           <Box sx={{ p: 2 }}>
-            {/* Language Toggle */}
-            <ListItemButton onClick={toggleLanguage} sx={{ borderRadius: 1, mb: 1 }}>
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <LanguageIcon />
-              </ListItemIcon>
-              <ListItemText primary={language === 'ko' ? 'English' : '한국어'} />
-            </ListItemButton>
-
             {/* Theme Toggle */}
             <ListItemButton onClick={toggleTheme} sx={{ borderRadius: 1, mb: 1 }}>
               <ListItemIcon sx={{ minWidth: 40 }}>

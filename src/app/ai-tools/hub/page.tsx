@@ -22,7 +22,7 @@ const features = [
     icon: <SpeedIcon sx={{ fontSize: 40 }} />,
     titleKo: '생산성 향상',
     titleEn: 'Productivity Boost',
-    descriptionKo: '다양한 AI 도구를 활용하여 개발 및 작업 속도를 높이세요',
+    descriptionKo: '다양한 AI 코딩 툴을 활용하여 개발 및 작업 속도를 높이세요',
     descriptionEn: 'Use various AI tools to speed up development and work',
   },
   {
@@ -36,7 +36,7 @@ const features = [
     icon: <LightbulbIcon sx={{ fontSize: 40 }} />,
     titleKo: '활용 팁',
     titleEn: 'Usage Tips',
-    descriptionKo: 'AI 도구들을 더 효과적으로 활용하는 방법을 배워보세요',
+    descriptionKo: 'AI 코딩 툴들을 더 효과적으로 활용하는 방법을 배워보세요',
     descriptionEn: 'Learn how to use AI tools more effectively',
   },
 ];
@@ -99,7 +99,7 @@ export default function AIToolsPage() {
                   backgroundClip: 'text',
                 }}
               >
-                AI {language === 'ko' ? '도구' : 'Tools'}
+                AI {language === 'ko' ? '코딩 툴' : 'Coding Tools'}
               </Typography>
               <Typography
                 variant="h5"
@@ -112,14 +112,14 @@ export default function AIToolsPage() {
                 }}
               >
                 {language === 'ko'
-                  ? '생산성을 높여주는 AI 도구들. 경험과 팁을 공유하고 함께 성장하세요.'
+                  ? '생산성을 높여주는 AI 코딩 툴들. 경험과 팁을 공유하고 함께 성장하세요.'
                   : 'AI tools that boost productivity. Share experiences and tips, grow together.'}
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Button
                   component={Link}
-                  href="/ai-tools/board"
+                  href="/board"
                   variant="contained"
                   size="large"
                   startIcon={<ForumIcon />}
@@ -242,16 +242,16 @@ export default function AIToolsPage() {
                 backgroundClip: 'text',
               }}
             >
-              {language === 'ko' ? 'AI 도구 커뮤니티에 참여하세요' : 'Join the AI Tools Community'}
+              {language === 'ko' ? 'AI 코딩 툴 커뮤니티에 참여하세요' : 'Join the AI Coding Tools Community'}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
               {language === 'ko'
-                ? 'AI 도구 사용 경험을 공유하고, 다른 개발자들의 노하우를 배워보세요'
+                ? 'AI 코딩 툴 사용 경험을 공유하고, 다른 개발자들의 노하우를 배워보세요'
                 : 'Share your AI tool experiences and learn from other developers'}
             </Typography>
             <Button
               component={Link}
-              href="/ai-tools/board"
+              href="/board"
               variant="contained"
               size="large"
               sx={{

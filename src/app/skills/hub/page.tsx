@@ -152,7 +152,7 @@ export default function SkillsHome() {
                 </Button>
                 <Button
                   component={Link}
-                  href="/skills/board"
+                  href="/board"
                   variant="outlined"
                   size="large"
                   startIcon={<ForumIcon />}

@@ -119,7 +119,7 @@ export default function MCPPage() {
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Button
                   component={Link}
-                  href="/mcp/board"
+                  href="/board"
                   variant="contained"
                   size="large"
                   startIcon={<ForumIcon />}
@@ -251,7 +251,7 @@ export default function MCPPage() {
             </Typography>
             <Button
               component={Link}
-              href="/mcp/board"
+              href="/board"
               variant="contained"
               size="large"
               sx={{

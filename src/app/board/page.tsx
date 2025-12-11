@@ -19,7 +19,7 @@ export default function GeneralBoardPage() {
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
         <CommunityBoard
           boardType="general"
-          title={language === 'ko' ? '자유게시판' : 'General Board'}
+          title={language === 'ko' ? '커뮤니티' : 'Community'}
           subtitle={language === 'ko'
             ? '자유롭게 이야기를 나누세요'
             : 'Share your thoughts freely'}

@@ -21,7 +21,7 @@ const contentTypeInfo: Record<ContentType, { label: string; labelEn: string; ico
   skill: { label: '스킬', labelEn: 'Skill', icon: '🎯', basePath: '/skills/skill' },
   mcp: { label: 'MCP', labelEn: 'MCP', icon: '🔌', basePath: '/board' },
   prompt: { label: '프롬프트', labelEn: 'Prompt', icon: '💬', basePath: '/board' },
-  ai_tool: { label: 'AI 도구', labelEn: 'AI Tool', icon: '🛠️', basePath: '/board' },
+  ai_tool: { label: 'AI 코딩 툴', labelEn: 'AI Coding Tool', icon: '🛠️', basePath: '/board' },
   post: { label: '게시글', labelEn: 'Post', icon: '📝', basePath: '/board' },
 };
 
@@ -117,8 +117,8 @@ function searchSampleData(query: string, language: 'ko' | 'en'): SearchResult[] 
     '스킬': 'skill',
     'MCP': 'mcp',
     '프롬프트': 'prompt',
-    'AI 도구': 'ai_tool',
-    '자유게시판': 'post',
+    'AI 코딩 툴': 'ai_tool',
+    '커뮤니티': 'post',
     '질문': 'post',
   };
 
@@ -126,8 +126,8 @@ function searchSampleData(query: string, language: 'ko' | 'en'): SearchResult[] 
     '스킬': '🎯',
     'MCP': '🔌',
     '프롬프트': '💬',
-    'AI 도구': '🛠️',
-    '자유게시판': '📝',
+    'AI 코딩 툴': '🛠️',
+    '커뮤니티': '📝',
     '질문': '❓',
   };
 

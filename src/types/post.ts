@@ -1,4 +1,4 @@
-export type PostCategory = '스킬' | 'MCP' | '프롬프트' | 'AI 도구' | '자유게시판' | '질문';
+export type PostCategory = '스킬' | 'MCP' | '프롬프트' | 'AI 코딩 툴' | '커뮤니티' | '질문';
 
 export interface Post {
   id: string;
@@ -24,8 +24,8 @@ export const categoryColors: Record<PostCategory, string> = {
   '스킬': '#ff6b35',
   'MCP': '#3b82f6',
   '프롬프트': '#f59e0b',
-  'AI 도구': '#10b981',
-  '자유게시판': '#8b5cf6',
+  'AI 코딩 툴': '#10b981',
+  '커뮤니티': '#8b5cf6',
   '질문': '#ec4899',
 };
 
@@ -33,7 +33,7 @@ export const categoryIcons: Record<PostCategory, string> = {
   '스킬': '🎯',
   'MCP': '🔌',
   '프롬프트': '💬',
-  'AI 도구': '🛠️',
-  '자유게시판': '📝',
+  'AI 코딩 툴': '🛠️',
+  '커뮤니티': '📝',
   '질문': '❓',
 };

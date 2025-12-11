@@ -199,7 +199,7 @@ export default function PostDetailPage() {
       case '스킬': return '/skills/board';
       case 'MCP': return '/mcp/board';
       case '프롬프트': return '/prompt/board';
-      case 'AI 도구': return '/ai-tools/board';
+      case 'AI 코딩 툴': return '/ai-tools/board';
       default: return '/board';
     }
   };

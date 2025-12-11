@@ -21,7 +21,7 @@ import { PostCard } from './PostCard';
 import { samplePosts, getHotPosts, getNewPosts, getTopPosts, filterByCategory } from '@/data/posts';
 import { SortOption, PostCategory, categoryColors, categoryIcons } from '@/types/post';
 
-const categories: (PostCategory | 'all')[] = ['all', '스킬', 'MCP', '프롬프트', 'AI 도구', '자유게시판', '질문'];
+const categories: (PostCategory | 'all')[] = ['all', '스킬', 'MCP', '프롬프트', 'AI 코딩 툴', '커뮤니티', '질문'];
 
 export const PostFeed: React.FC = () => {
   const theme = useTheme();
