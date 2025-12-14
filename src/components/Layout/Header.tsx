@@ -230,37 +230,14 @@ export const Header: React.FC = () => {
                 }}
               />
               <Box
+                component="img"
+                src={mode === 'dark' ? '/textLogo-darkmode.svg' : '/textLogo.svg'}
+                alt="VIB Builders"
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2px',
+                  height: { xs: 20, sm: 24 },
+                  width: 'auto',
                 }}
-              >
-                <Typography
-                  component="span"
-                  sx={{
-                    fontFamily: 'Pretendard, sans-serif',
-                    fontSize: { xs: 16, sm: 18 },
-                    fontWeight: 200,
-                    color: mode === 'dark' ? '#ffffff' : '#000000',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  VIB
-                </Typography>
-                <Typography
-                  component="span"
-                  sx={{
-                    fontFamily: 'Pretendard, sans-serif',
-                    fontSize: { xs: 16, sm: 18 },
-                    fontWeight: 800,
-                    color: mode === 'dark' ? '#ffffff' : '#000000',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Builders
-                </Typography>
-              </Box>
+              />
             </Box>
 
             {/* Desktop Navigation */}
