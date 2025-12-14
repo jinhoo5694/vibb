@@ -10,7 +10,8 @@
       "Bash(scoop install:*)",
       "Bash(curl:*)",
       "Bash(unzip:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": []

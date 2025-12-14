@@ -16,6 +16,7 @@ import {
   useTheme,
   CircularProgress,
   Breadcrumbs,
+  Pagination,
 } from '@mui/material';
 import {
   ArrowUpward as UpvoteIcon,
@@ -29,6 +30,7 @@ import {
   ThumbUp as ThumbUpIcon,
   ThumbUpOutlined as ThumbUpOutlinedIcon,
   NavigateNext as NavigateNextIcon,
+  Flag as FlagIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -38,10 +40,12 @@ import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { Post, categoryColors, categoryIcons, PostCategory } from '@/types/post';
-import { samplePosts } from '@/data/posts';
+import { samplePosts, getNewPosts, filterByCategory } from '@/data/posts';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { ReportDialog } from '@/components/Community/ReportDialog';
+import { PostNavigationList } from '@/components/Community/PostNavigationList';
 
 // Sample comments data
 interface Comment {
@@ -104,8 +108,42 @@ export default function PostDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [commentPage, setCommentPage] = useState(1);
 
   const postId = params.id as string;
+  const POSTS_PER_PAGE = 15;
+  const COMMENTS_PER_PAGE = 20;
+
+  // Get all posts sorted by date for navigation
+  const allPosts = useMemo(() => getNewPosts(samplePosts), []);
+
+  // Calculate which page the current post is on
+  useEffect(() => {
+    const postIndex = allPosts.findIndex(p => p.id === postId);
+    if (postIndex !== -1) {
+      const page = Math.floor(postIndex / POSTS_PER_PAGE) + 1;
+      setCurrentPage(page);
+    }
+  }, [postId, allPosts]);
+
+  // Get posts for current page
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return allPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [allPosts, currentPage]);
+
+  const totalPages = Math.ceil(allPosts.length / POSTS_PER_PAGE);
+
+  // Comment pagination
+  const paginatedComments = useMemo(() => {
+    const startIndex = (commentPage - 1) * COMMENTS_PER_PAGE;
+    return comments.slice(startIndex, startIndex + COMMENTS_PER_PAGE);
+  }, [comments, commentPage]);
+
+  const totalCommentPages = Math.ceil(comments.length / COMMENTS_PER_PAGE);
 
   useEffect(() => {
     // Find post from sample data
@@ -117,6 +155,17 @@ export default function PostDetailPage() {
     }
     setLoading(false);
   }, [postId]);
+
+  const handleReportComment = (commentId: string) => {
+    setReportTargetId(commentId);
+    setReportDialogOpen(true);
+  };
+
+  const handleReportSubmit = (reason: string, detail?: string) => {
+    // In production, this would call an API to submit the report
+    console.log('Report submitted:', { targetId: reportTargetId, reason, detail });
+    // Show success feedback (could add a snackbar here)
+  };
 
   const handleVote = (type: 'up' | 'down') => {
     if (!post) return;
@@ -144,6 +193,7 @@ export default function PostDetailPage() {
 
     setComments([newCommentObj, ...comments]);
     setNewComment('');
+    setCommentPage(1); // Go to first page to see new comment
   };
 
   const score = useMemo(() => {
@@ -455,55 +505,104 @@ export default function PostDetailPage() {
           {/* Comments List */}
           <Box sx={{ borderTop: `1px solid ${theme.palette.divider}`, pt: 2 }}>
             {comments.length > 0 ? (
-              comments.map((comment, index) => (
-                <motion.div
-                  key={comment.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.03 }}
-                >
-                  <Box
-                    sx={{
-                      py: 2,
-                      borderBottom: index < comments.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
-                    }}
+              <>
+                {paginatedComments.map((comment, index) => (
+                  <motion.div
+                    key={comment.id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15, delay: index * 0.02 }}
                   >
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                      <Avatar src={comment.author.avatar} sx={{ width: 32, height: 32 }}>
-                        {comment.author.name.charAt(0)}
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            {comment.author.name}
+                    <Box
+                      sx={{
+                        py: 1,
+                        px: 0.5,
+                        borderBottom: index < paginatedComments.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Avatar src={comment.author.avatar} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                          {comment.author.name.charAt(0)}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                              {comment.author.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+                              {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: ko })}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.4, my: 0.25, wordBreak: 'break-word' }}>
+                            {comment.content}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: ko })}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ mb: 1, wordBreak: 'break-word' }}>
-                          {comment.content}
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Button
-                            size="small"
-                            startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />}
-                            sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.5 }}
-                          >
-                            {comment.upvotes > 0 && comment.upvotes}
-                          </Button>
-                          <Button
-                            size="small"
-                            sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.5 }}
-                          >
-                            {language === 'ko' ? '답글' : 'Reply'}
-                          </Button>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                            <Button
+                              size="small"
+                              startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 12 }} />}
+                              sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                            >
+                              {comment.upvotes > 0 && comment.upvotes}
+                            </Button>
+                            <Button
+                              size="small"
+                              sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                            >
+                              {language === 'ko' ? '답글' : 'Reply'}
+                            </Button>
+                            <Button
+                              size="small"
+                              startIcon={<FlagIcon sx={{ fontSize: 10 }} />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReportComment(comment.id);
+                              }}
+                              sx={{ color: 'text.disabled', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                            >
+                              {language === 'ko' ? '신고' : 'Report'}
+                            </Button>
+                          </Box>
                         </Box>
                       </Box>
                     </Box>
+                  </motion.div>
+                ))}
+                {/* Comment Pagination */}
+                {totalCommentPages > 1 && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 2,
+                      py: 2,
+                      mt: 1,
+                      borderTop: `1px solid ${theme.palette.divider}`,
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary">
+                      {language === 'ko'
+                        ? `${comments.length}개의 댓글 중 ${(commentPage - 1) * COMMENTS_PER_PAGE + 1}-${Math.min(commentPage * COMMENTS_PER_PAGE, comments.length)}번째`
+                        : `${(commentPage - 1) * COMMENTS_PER_PAGE + 1}-${Math.min(commentPage * COMMENTS_PER_PAGE, comments.length)} of ${comments.length} comments`}
+                    </Typography>
+                    <Pagination
+                      count={totalCommentPages}
+                      page={commentPage}
+                      onChange={(_, page) => setCommentPage(page)}
+                      size="small"
+                      sx={{
+                        '& .MuiPaginationItem-root': {
+                          fontSize: '0.8rem',
+                        },
+                        '& .Mui-selected': {
+                          bgcolor: '#ff6b35 !important',
+                          color: '#fff',
+                        },
+                      }}
+                    />
                   </Box>
-                </motion.div>
-              ))
+                )}
+              </>
             ) : (
               <Box sx={{ py: 4, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
@@ -514,17 +613,39 @@ export default function PostDetailPage() {
           </Box>
         </Box>
 
+        {/* Post Navigation List */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            {language === 'ko' ? '게시글 목록' : 'Post List'}
+          </Typography>
+          <PostNavigationList
+            posts={paginatedPosts}
+            currentPostId={postId}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </Box>
+
         {/* Back Button */}
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
           <Button
             variant="outlined"
             startIcon={<BackIcon />}
-            onClick={() => router.back()}
+            onClick={() => router.push('/board')}
           >
             {language === 'ko' ? '목록으로' : 'Back to List'}
           </Button>
         </Box>
       </Container>
+
+      {/* Report Dialog */}
+      <ReportDialog
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        onSubmit={handleReportSubmit}
+        targetType="comment"
+      />
 
       <Footer />
       <InquiryFab />

@@ -38,6 +38,8 @@ import {
   AutoAwesome as SkillsIcon,
   Info as InfoIcon,
   MenuBook as GuideIcon,
+  GitHub as GitHubIcon,
+  Google as GoogleIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -80,7 +82,7 @@ const subMenuMap: Record<string, typeof skillsSubMenu> = {
 export const Header: React.FC = () => {
   const { mode, toggleTheme } = useThemeContext();
   const { language } = useLanguage();
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signInWithGoogle, signInWithGithub, signOut } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const pathname = usePathname();
@@ -159,8 +161,13 @@ export const Header: React.FC = () => {
     closeMenuIfNotHovering();
   };
 
-  const handleSignIn = async () => {
+  const handleSignInWithGoogle = async () => {
     await signInWithGoogle();
+    setMobileDrawerOpen(false);
+  };
+
+  const handleSignInWithGithub = async () => {
+    await signInWithGithub();
     setMobileDrawerOpen(false);
   };
 
@@ -215,7 +222,7 @@ export const Header: React.FC = () => {
             >
               <Box
                 component="img"
-                src="/new_logo.svg"
+                src={mode === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'}
                 alt="VIB Builders"
                 sx={{
                   height: { xs: 32, sm: 40 },
@@ -418,15 +425,33 @@ export const Header: React.FC = () => {
                     </Menu>
                   </>
                 ) : (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<LoginIcon />}
-                    onClick={handleSignIn}
-                    sx={{ ml: 1 }}
-                  >
-                    Sign In
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1, ml: 1 }}>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<GoogleIcon />}
+                      onClick={handleSignInWithGoogle}
+                      size="small"
+                    >
+                      Google
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<GitHubIcon />}
+                      onClick={handleSignInWithGithub}
+                      size="small"
+                      sx={{
+                        borderColor: mode === 'dark' ? '#fff' : '#24292e',
+                        color: mode === 'dark' ? '#fff' : '#24292e',
+                        '&:hover': {
+                          borderColor: mode === 'dark' ? '#fff' : '#24292e',
+                          backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(36,41,46,0.08)',
+                        },
+                      }}
+                    >
+                      GitHub
+                    </Button>
+                  </Box>
                 )}
 
                 <IconButton onClick={toggleTheme} color="inherit">
@@ -621,15 +646,32 @@ export const Header: React.FC = () => {
                   </Button>
                 </Box>
               ) : (
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  startIcon={<LoginIcon />}
-                  onClick={handleSignIn}
-                >
-                  Sign In
-                </Button>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    startIcon={<GoogleIcon />}
+                    onClick={handleSignInWithGoogle}
+                  >
+                    Google로 로그인
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<GitHubIcon />}
+                    onClick={handleSignInWithGithub}
+                    sx={{
+                      backgroundColor: '#24292e',
+                      color: '#fff',
+                      '&:hover': {
+                        backgroundColor: '#1a1e22',
+                      },
+                    }}
+                  >
+                    GitHub로 로그인
+                  </Button>
+                </Box>
               )
             )}
           </Box>

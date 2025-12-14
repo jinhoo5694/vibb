@@ -8,7 +8,7 @@ import {
   Alert,
   Button,
 } from '@mui/material';
-import { Login as LoginIcon } from '@mui/icons-material';
+import { Google as GoogleIcon, GitHub as GitHubIcon } from '@mui/icons-material';
 import type { Comment } from '@/types/comment';
 import { CommentForm } from './CommentForm';
 import { CommentList } from './CommentList';
@@ -21,7 +21,7 @@ interface CommentSectionProps {
 }
 
 export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub } = useAuth();
   const { t } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -231,14 +231,28 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
             <Typography variant="body1" color="text.secondary" gutterBottom>
               {t('comments.section.signInPrompt')}
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={<LoginIcon />}
-              onClick={signInWithGoogle}
-              sx={{ mt: 2 }}
-            >
-              {t('comments.section.signInButton')}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', mt: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<GoogleIcon />}
+                onClick={signInWithGoogle}
+              >
+                Google
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<GitHubIcon />}
+                onClick={signInWithGithub}
+                sx={{
+                  backgroundColor: '#24292e',
+                  '&:hover': {
+                    backgroundColor: '#1a1e22',
+                  },
+                }}
+              >
+                GitHub
+              </Button>
+            </Box>
           </Box>
         )}
       </Box>

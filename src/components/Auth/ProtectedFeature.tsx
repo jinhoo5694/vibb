@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
-import { Login as LoginIcon } from '@mui/icons-material';
+import { Google as GoogleIcon, GitHub as GitHubIcon } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedFeatureProps {
@@ -27,7 +27,7 @@ export const ProtectedFeature: React.FC<ProtectedFeatureProps> = ({
   message = 'Please sign in to access this feature',
   title = 'Authentication Required',
 }) => {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle, signInWithGithub } = useAuth();
 
   if (loading) {
     return (
@@ -55,14 +55,29 @@ export const ProtectedFeature: React.FC<ProtectedFeatureProps> = ({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           {message}
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<LoginIcon />}
-          onClick={signInWithGoogle}
-        >
-          Sign In with Google
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<GoogleIcon />}
+            onClick={signInWithGoogle}
+          >
+            Google
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<GitHubIcon />}
+            onClick={signInWithGithub}
+            sx={{
+              backgroundColor: '#24292e',
+              '&:hover': {
+                backgroundColor: '#1a1e22',
+              },
+            }}
+          >
+            GitHub
+          </Button>
+        </Box>
       </Paper>
     );
   }

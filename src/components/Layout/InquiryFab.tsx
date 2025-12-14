@@ -19,6 +19,8 @@ import {
 import {
   Mail as MailIcon,
   Close as CloseIcon,
+  Google as GoogleIcon,
+  GitHub as GitHubIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -30,7 +32,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const InquiryFab: React.FC = () => {
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -173,18 +175,34 @@ export const InquiryFab: React.FC = () => {
                 <Alert severity="info" sx={{ mb: 3 }}>
                   {t('inquiry.signInRequired')}
                 </Alert>
-                <Button
-                  variant="contained"
-                  onClick={signInWithGoogle}
-                  sx={{
-                    background: 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #ff8a5c 0%, #ffd477 100%)',
-                    },
-                  }}
-                >
-                  {t('inquiry.signIn')}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<GoogleIcon />}
+                    onClick={signInWithGoogle}
+                    sx={{
+                      background: 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #ff8a5c 0%, #ffd477 100%)',
+                      },
+                    }}
+                  >
+                    Google
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<GitHubIcon />}
+                    onClick={signInWithGithub}
+                    sx={{
+                      backgroundColor: '#24292e',
+                      '&:hover': {
+                        backgroundColor: '#1a1e22',
+                      },
+                    }}
+                  >
+                    GitHub
+                  </Button>
+                </Box>
               </Box>
             ) : success ? (
               <Alert severity="success" sx={{ mb: 2 }}>
