@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Header } from '@/components/Layout/Header';
+import { HubPageSkeleton } from '@/components/Skeletons';
 
 export default function SkillsPage() {
   const router = useRouter();
@@ -10,5 +12,11 @@ export default function SkillsPage() {
     router.replace('/skills/hub');
   }, [router]);
 
-  return null;
+  // Show skeleton during redirect instead of blank screen
+  return (
+    <>
+      <Header />
+      <HubPageSkeleton />
+    </>
+  );
 }
