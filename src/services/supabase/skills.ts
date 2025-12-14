@@ -35,7 +35,6 @@ export async function searchSkills(query: string, language?: 'ko' | 'en'): Promi
       )
     `)
     .eq('type', 'skill')
-    .eq('is_public', true)
     .or(`title.ilike.%${query}%,body.ilike.%${query}%`)
     .order('view_count', { ascending: false })
     .limit(10);
@@ -45,19 +44,8 @@ export async function searchSkills(query: string, language?: 'ko' | 'en'): Promi
     return [];
   }
 
-  // Get likes count for each content
-  const contentIds = contents.map(c => c.id);
-  const { data: likesData } = await supabase
-    .from('content_likes')
-    .select('content_id')
-    .in('content_id', contentIds);
-
-  const likesCountMap: Record<string, number> = {};
-  likesData?.forEach(like => {
-    likesCountMap[like.content_id] = (likesCountMap[like.content_id] || 0) + 1;
-  });
-
   // Get reviews count for each content
+  const contentIds = contents.map(c => c.id);
   const { data: reviewsData } = await supabase
     .from('reviews')
     .select('content_id')
@@ -81,7 +69,8 @@ export async function searchSkills(query: string, language?: 'ko' | 'en'): Promi
       ...content,
       author: null,
       tags,
-      likes_count: likesCountMap[content.id] || 0,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
       reviews_count: reviewsCountMap[content.id] || 0,
     };
   });
@@ -101,7 +90,6 @@ export async function getSkills(): Promise<SkillWithCategory[]> {
       )
     `)
     .eq('type', 'skill')
-    .eq('is_public', true)
     .order('view_count', { ascending: false });
 
   if (error) {
@@ -113,19 +101,8 @@ export async function getSkills(): Promise<SkillWithCategory[]> {
     return getMockSkills();
   }
 
-  // Get likes count for each content
-  const contentIds = contents.map(c => c.id);
-  const { data: likesData } = await supabase
-    .from('content_likes')
-    .select('content_id')
-    .in('content_id', contentIds);
-
-  const likesCountMap: Record<string, number> = {};
-  likesData?.forEach(like => {
-    likesCountMap[like.content_id] = (likesCountMap[like.content_id] || 0) + 1;
-  });
-
   // Get reviews count for each content
+  const contentIds = contents.map(c => c.id);
   const { data: reviewsData } = await supabase
     .from('reviews')
     .select('content_id')
@@ -149,7 +126,8 @@ export async function getSkills(): Promise<SkillWithCategory[]> {
       ...content,
       author: null,
       tags,
-      likes_count: likesCountMap[content.id] || 0,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
       reviews_count: reviewsCountMap[content.id] || 0,
     };
   });
@@ -179,12 +157,6 @@ export async function getSkillById(skillId: string): Promise<SkillWithCategory |
     return mockSkill || null;
   }
 
-  // Get likes count
-  const { count: likesCount } = await supabase
-    .from('content_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('content_id', skillId);
-
   // Get reviews count
   const { count: reviewsCount } = await supabase
     .from('reviews')
@@ -202,7 +174,8 @@ export async function getSkillById(skillId: string): Promise<SkillWithCategory |
     ...content,
     author: content.author as Profile | null,
     tags,
-    likes_count: likesCount || 0,
+    upvote_count: content.upvote_count || 0,
+    downvote_count: content.downvote_count || 0,
     reviews_count: reviewsCount || 0,
   };
 
@@ -234,23 +207,13 @@ export async function getSkillsByCategory(tagId: string): Promise<SkillWithCateg
   for (const ct of contentTags) {
     const c = ct.contents;
     if (c && typeof c === 'object' && !Array.isArray(c) &&
-        (c as Content).type === 'skill' && (c as Content).is_public) {
+        (c as Content).type === 'skill') {
       contents.push(c as Content & { content_tags: Array<{ tags: Tag | null }> });
     }
   }
 
-  // Get likes and reviews counts
+  // Get reviews counts
   const contentIds = contents.map(c => c.id);
-
-  const { data: likesData } = await supabase
-    .from('content_likes')
-    .select('content_id')
-    .in('content_id', contentIds);
-
-  const likesCountMap: Record<string, number> = {};
-  likesData?.forEach(like => {
-    likesCountMap[like.content_id] = (likesCountMap[like.content_id] || 0) + 1;
-  });
 
   const { data: reviewsData } = await supabase
     .from('reviews')
@@ -271,7 +234,8 @@ export async function getSkillsByCategory(tagId: string): Promise<SkillWithCateg
       ...content,
       author: null,
       tags,
-      likes_count: likesCountMap[content.id] || 0,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
       reviews_count: reviewsCountMap[content.id] || 0,
     };
   });
@@ -374,59 +338,112 @@ export async function incrementViewCount(skillId: string): Promise<void> {
 }
 
 // ============================================
-// Like Functions
+// Vote Functions
 // ============================================
 
+export async function toggleVote(
+  userId: string,
+  contentId: string,
+  voteType: 'upvote' | 'downvote'
+): Promise<{ voted: 'upvote' | 'downvote' | null; upvoteCount: number; downvoteCount: number }> {
+  // Check if already voted
+  const { data: existingVote } = await supabase
+    .from('content_votes')
+    .select('vote_type')
+    .eq('user_id', userId)
+    .eq('content_id', contentId)
+    .single();
+
+  if (existingVote) {
+    if (existingVote.vote_type === voteType) {
+      // Remove vote if same type
+      await supabase
+        .from('content_votes')
+        .delete()
+        .eq('user_id', userId)
+        .eq('content_id', contentId);
+
+      // Get updated counts
+      const { data: content } = await supabase
+        .from('contents')
+        .select('upvote_count, downvote_count')
+        .eq('id', contentId)
+        .single();
+
+      return {
+        voted: null,
+        upvoteCount: content?.upvote_count || 0,
+        downvoteCount: content?.downvote_count || 0,
+      };
+    } else {
+      // Change vote type
+      await supabase
+        .from('content_votes')
+        .update({ vote_type: voteType })
+        .eq('user_id', userId)
+        .eq('content_id', contentId);
+
+      // Get updated counts
+      const { data: content } = await supabase
+        .from('contents')
+        .select('upvote_count, downvote_count')
+        .eq('id', contentId)
+        .single();
+
+      return {
+        voted: voteType,
+        upvoteCount: content?.upvote_count || 0,
+        downvoteCount: content?.downvote_count || 0,
+      };
+    }
+  } else {
+    // Create new vote
+    await supabase
+      .from('content_votes')
+      .insert({ user_id: userId, content_id: contentId, vote_type: voteType });
+
+    // Get updated counts
+    const { data: content } = await supabase
+      .from('contents')
+      .select('upvote_count, downvote_count')
+      .eq('id', contentId)
+      .single();
+
+    return {
+      voted: voteType,
+      upvoteCount: content?.upvote_count || 0,
+      downvoteCount: content?.downvote_count || 0,
+    };
+  }
+}
+
+// Legacy function - toggles upvote for backward compatibility
 export async function toggleLike(
   userId: string,
   contentId: string
 ): Promise<{ liked: boolean; likesCount: number }> {
-  // Check if already liked
-  const { data: existingLike } = await supabase
-    .from('content_likes')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('content_id', contentId)
-    .single();
-
-  if (existingLike) {
-    // Unlike
-    await supabase
-      .from('content_likes')
-      .delete()
-      .eq('user_id', userId)
-      .eq('content_id', contentId);
-
-    const { count } = await supabase
-      .from('content_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('content_id', contentId);
-
-    return { liked: false, likesCount: count || 0 };
-  } else {
-    // Like
-    await supabase
-      .from('content_likes')
-      .insert({ user_id: userId, content_id: contentId });
-
-    const { count } = await supabase
-      .from('content_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('content_id', contentId);
-
-    return { liked: true, likesCount: count || 0 };
-  }
+  const result = await toggleVote(userId, contentId, 'upvote');
+  return {
+    liked: result.voted === 'upvote',
+    likesCount: result.upvoteCount - result.downvoteCount,
+  };
 }
 
-export async function hasUserLikedSkill(userId: string, contentId: string): Promise<boolean> {
+export async function getUserVote(userId: string, contentId: string): Promise<'upvote' | 'downvote' | null> {
   const { data } = await supabase
-    .from('content_likes')
-    .select('*')
+    .from('content_votes')
+    .select('vote_type')
     .eq('user_id', userId)
     .eq('content_id', contentId)
     .single();
 
-  return !!data;
+  return data?.vote_type || null;
+}
+
+// Legacy function for backward compatibility
+export async function hasUserLikedSkill(userId: string, contentId: string): Promise<boolean> {
+  const vote = await getUserVote(userId, contentId);
+  return vote === 'upvote';
 }
 
 // ============================================

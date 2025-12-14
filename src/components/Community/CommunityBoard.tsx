@@ -55,6 +55,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export type BoardType = 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'general';
 
@@ -202,6 +203,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const theme = useTheme();
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -429,8 +431,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
       alert(t('common.loginRequired'));
       return;
     }
-    // TODO: Open create post modal or navigate to create page
-    alert('Create post feature coming soon!');
+    router.push('/board/write');
   };
 
   return (

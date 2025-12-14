@@ -1,6 +1,6 @@
 import { supabase } from './client';
 import { Content, ContentWithRelations, Profile, Tag } from '@/types/database';
-import { Post, PostCategory } from '@/types/post';
+import { Post, PostCategory, MainCategory, SubCategoryTag } from '@/types/post';
 
 // Map PostCategory to ContentType
 const categoryToContentType: Record<PostCategory, string> = {
@@ -14,7 +14,7 @@ const categoryToContentType: Record<PostCategory, string> = {
 
 // Convert database content to Post format
 function contentToPost(content: ContentWithRelations): Post {
-  const metadata = content.metadata || {};
+  const metadata = (content.metadata || {}) as Record<string, unknown>;
 
   // Determine category from content type and metadata
   let category: PostCategory = '커뮤니티';
@@ -33,12 +33,15 @@ function contentToPost(content: ContentWithRelations): Post {
       avatar: content.author?.avatar_url || undefined,
     },
     category,
+    mainCategory: metadata.mainCategory as MainCategory | undefined,
+    subCategoryTag: metadata.subCategoryTag as SubCategoryTag | undefined,
     createdAt: new Date(content.created_at || Date.now()),
-    upvotes: content.likes_count || 0,
-    downvotes: 0, // We don't track downvotes in the current schema
+    upvotes: content.upvote_count || 0,
+    downvotes: content.downvote_count || 0,
     commentCount: content.reviews_count || 0,
+    viewCount: content.view_count || 0,
     tags: content.tags?.map(t => t.name) || [],
-    isPinned: metadata.is_pinned || false,
+    isPinned: (metadata.is_pinned as boolean) || false,
   };
 }
 
@@ -62,8 +65,7 @@ export async function getPosts(
         tag_id,
         tags:tag_id (id, name)
       )
-    `)
-    .eq('is_public', true);
+    `);
 
   // Filter by content type if specified
   if (contentType && contentType !== 'all') {
@@ -76,7 +78,7 @@ export async function getPosts(
       query = query.order('created_at', { ascending: false });
       break;
     case 'top':
-      query = query.order('view_count', { ascending: false });
+      query = query.order('upvote_count', { ascending: false });
       break;
     case 'hot':
     default:
@@ -94,19 +96,8 @@ export async function getPosts(
     return [];
   }
 
-  // Get likes count for each content
-  const contentIds = contents.map(c => c.id);
-  const { data: likesData } = await supabase
-    .from('content_likes')
-    .select('content_id')
-    .in('content_id', contentIds);
-
-  const likesCountMap: Record<string, number> = {};
-  likesData?.forEach(like => {
-    likesCountMap[like.content_id] = (likesCountMap[like.content_id] || 0) + 1;
-  });
-
   // Get reviews count for each content
+  const contentIds = contents.map(c => c.id);
   const { data: reviewsData } = await supabase
     .from('reviews')
     .select('content_id')
@@ -130,7 +121,8 @@ export async function getPosts(
       ...content,
       author: content.author as Profile | null,
       tags,
-      likes_count: likesCountMap[content.id] || 0,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
       reviews_count: reviewsCountMap[content.id] || 0,
     };
   });
@@ -183,27 +175,35 @@ export async function createPost(
     metadata?: Record<string, unknown>;
   }
 ): Promise<Content | null> {
+  const insertData = {
+    author_id: userId,
+    type: data.type,
+    title: data.title,
+    body: data.body,
+    metadata: data.metadata || {},
+  };
+
+  console.log('[createPost] Sending request with data:', {
+    userId,
+    insertData,
+    tags: data.tags,
+  });
+
   const { data: content, error } = await supabase
     .from('contents')
-    .insert({
-      author_id: userId,
-      type: data.type,
-      title: data.title,
-      body: data.body,
-      metadata: data.metadata || {},
-      is_public: true,
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating post:', error);
+    console.error('[createPost] Error creating post:', error);
     return null;
   }
 
+  console.log('[createPost] Post created successfully:', content);
+
   // Add tags if provided
   if (data.tags && data.tags.length > 0 && content) {
-    // First, get or create tags
     for (const tagName of data.tags) {
       // Check if tag exists
       const { data: existingTag } = await supabase
@@ -218,7 +218,7 @@ export async function createPost(
       if (!tagId) {
         const { data: newTag } = await supabase
           .from('tags')
-          .insert({ name: tagName })
+          .insert({ name: tagName, tag_category: 'topic' })
           .select('id')
           .single();
         tagId = newTag?.id;
@@ -236,44 +236,57 @@ export async function createPost(
   return content;
 }
 
-// Vote on a post (like/unlike)
+// Vote on a post (upvote/downvote)
 export async function votePost(
   userId: string,
   contentId: string,
   voteType: 'up' | 'down'
-): Promise<{ success: boolean; likes_count: number }> {
-  // Currently we only support likes (upvotes)
-  if (voteType === 'up') {
-    // Check if already liked
-    const { data: existingLike } = await supabase
-      .from('content_likes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('content_id', contentId)
-      .single();
+): Promise<{ success: boolean; upvote_count: number; downvote_count: number }> {
+  const voteValue = voteType === 'up' ? 'upvote' : 'downvote';
 
-    if (existingLike) {
-      // Unlike
+  // Check if already voted
+  const { data: existingVote } = await supabase
+    .from('content_votes')
+    .select('vote_type')
+    .eq('user_id', userId)
+    .eq('content_id', contentId)
+    .single();
+
+  if (existingVote) {
+    if (existingVote.vote_type === voteValue) {
+      // Remove vote if same type
       await supabase
-        .from('content_likes')
+        .from('content_votes')
         .delete()
         .eq('user_id', userId)
         .eq('content_id', contentId);
     } else {
-      // Like
+      // Change vote type
       await supabase
-        .from('content_likes')
-        .insert({ user_id: userId, content_id: contentId });
+        .from('content_votes')
+        .update({ vote_type: voteValue })
+        .eq('user_id', userId)
+        .eq('content_id', contentId);
     }
+  } else {
+    // Create new vote
+    await supabase
+      .from('content_votes')
+      .insert({ user_id: userId, content_id: contentId, vote_type: voteValue });
   }
 
-  // Get updated likes count
-  const { count } = await supabase
-    .from('content_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('content_id', contentId);
+  // Get updated counts from contents table
+  const { data: content } = await supabase
+    .from('contents')
+    .select('upvote_count, downvote_count')
+    .eq('id', contentId)
+    .single();
 
-  return { success: true, likes_count: count || 0 };
+  return {
+    success: true,
+    upvote_count: content?.upvote_count || 0,
+    downvote_count: content?.downvote_count || 0,
+  };
 }
 
 // Get post by ID
@@ -296,12 +309,6 @@ export async function getPostById(postId: string): Promise<Post | null> {
     return null;
   }
 
-  // Get likes count
-  const { count: likesCount } = await supabase
-    .from('content_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('content_id', postId);
-
   // Get reviews count
   const { count: reviewsCount } = await supabase
     .from('reviews')
@@ -319,7 +326,8 @@ export async function getPostById(postId: string): Promise<Post | null> {
     ...content,
     author: content.author as Profile | null,
     tags,
-    likes_count: likesCount || 0,
+    upvote_count: content.upvote_count || 0,
+    downvote_count: content.downvote_count || 0,
     reviews_count: reviewsCount || 0,
   };
 
@@ -340,7 +348,7 @@ export async function deletePost(postId: string, userId: string): Promise<boolea
   }
 
   // Delete related data first
-  await supabase.from('content_likes').delete().eq('content_id', postId);
+  await supabase.from('content_votes').delete().eq('content_id', postId);
   await supabase.from('content_tags').delete().eq('content_id', postId);
   await supabase.from('reviews').delete().eq('content_id', postId);
   await supabase.from('bookmarks').delete().eq('content_id', postId);
