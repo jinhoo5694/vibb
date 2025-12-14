@@ -11,7 +11,8 @@
       "Bash(curl:*)",
       "Bash(unzip:*)",
       "Bash(npm run build:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": [],
     "ask": []
