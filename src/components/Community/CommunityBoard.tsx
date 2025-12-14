@@ -35,11 +35,23 @@ import {
   KeyboardArrowRight as ArrowIcon,
   Search as SearchIcon,
   Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { PostListTable } from '@/components/Community/PostListTable';
 import { getBoardPosts } from '@/services/supabase';
 import { samplePosts, getHotPosts, getNewPosts, getTopPosts } from '@/data/posts';
-import { Post, SortOption, PostCategory, categoryColors, categoryIcons } from '@/types/post';
+import {
+  Post,
+  SortOption,
+  PostCategory,
+  categoryColors,
+  categoryIcons,
+  MainCategory,
+  SubCategoryTag,
+  mainCategoryConfig,
+  subCategoryColors,
+} from '@/types/post';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
@@ -203,6 +215,11 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const postsPerPage = 20;
 
+  // New hierarchical filter states
+  const [selectedMainCategory, setSelectedMainCategory] = useState<MainCategory | 'all'>('all');
+  const [selectedSubTag, setSelectedSubTag] = useState<SubCategoryTag | 'all'>('all');
+  const [expandedMainCategory, setExpandedMainCategory] = useState<MainCategory | null>(null);
+
   // For general board, show all posts
   // For category-specific boards, show only that category's posts
   const isGeneralBoard = boardType === 'general';
@@ -280,9 +297,19 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const displayedPosts = useMemo(() => {
     let filtered = posts;
 
-    // Filter by sub-category
+    // Filter by new hierarchical category system
+    if (selectedMainCategory !== 'all') {
+      filtered = filtered.filter(post => post.mainCategory === selectedMainCategory);
+
+      // Further filter by sub-tag if selected
+      if (selectedSubTag !== 'all') {
+        filtered = filtered.filter(post => post.subCategoryTag === selectedSubTag);
+      }
+    }
+
+    // Legacy filter by sub-category (for backward compatibility)
     if (selectedSubCategory !== 'all') {
-      filtered = posts.filter(post => post.category === selectedSubCategory);
+      filtered = filtered.filter(post => post.category === selectedSubCategory);
     }
 
     // Filter by search query (title, author, content)
@@ -306,7 +333,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
       default:
         return filtered;
     }
-  }, [posts, sortBy, selectedSubCategory, searchQuery]);
+  }, [posts, sortBy, selectedSubCategory, selectedMainCategory, selectedSubTag, searchQuery]);
 
   // Pagination logic
   const totalPages = Math.ceil(displayedPosts.length / postsPerPage);
@@ -318,7 +345,26 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   // Reset page when filter/sort/search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, selectedSubCategory, searchQuery]);
+  }, [sortBy, selectedSubCategory, selectedMainCategory, selectedSubTag, searchQuery]);
+
+  // Reset sub-tag when main category changes
+  useEffect(() => {
+    setSelectedSubTag('all');
+  }, [selectedMainCategory]);
+
+  // Handle main category click
+  const handleMainCategoryClick = (category: MainCategory | 'all') => {
+    if (category === 'all') {
+      setSelectedMainCategory('all');
+      setExpandedMainCategory(null);
+    } else if (selectedMainCategory === category) {
+      // Toggle expand/collapse if same category clicked
+      setExpandedMainCategory(expandedMainCategory === category ? null : category);
+    } else {
+      setSelectedMainCategory(category);
+      setExpandedMainCategory(category);
+    }
+  };
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
@@ -481,60 +527,135 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
             </ToggleButtonGroup>
           </Box>
 
-          {/* Category Section */}
+          {/* Hierarchical Category Filter */}
           {showSubCategories && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-                {language === 'ko' ? '필터' : 'Filter'}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                <Chip
-                  label={language === 'ko' ? '전체' : 'All'}
-                  size="small"
-                  onClick={() => setSelectedSubCategory('all')}
-                  variant={selectedSubCategory === 'all' ? 'filled' : 'outlined'}
-                  sx={{
-                    fontWeight: selectedSubCategory === 'all' ? 600 : 400,
-                    fontSize: '0.75rem',
-                    height: 26,
-                    bgcolor: selectedSubCategory === 'all' ? theme.palette.mode === 'dark' ? '#444' : '#333' : 'transparent',
-                    color: selectedSubCategory === 'all' ? '#fff' : 'text.secondary',
-                    borderColor: theme.palette.divider,
-                    '&:hover': {
-                      bgcolor: selectedSubCategory === 'all'
-                        ? theme.palette.mode === 'dark' ? '#555' : '#444'
-                        : theme.palette.action.hover,
-                    },
-                  }}
-                />
-                {categories.map((category) => {
-                  const color = categoryColors[category];
-                  const icon = categoryIcons[category];
-                  const isSelected = selectedSubCategory === category;
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+              {/* Main Categories */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                  {language === 'ko' ? '필터' : 'Filter'}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {/* All button */}
+                  <Chip
+                    label={language === 'ko' ? '전체' : 'All'}
+                    size="small"
+                    onClick={() => handleMainCategoryClick('all')}
+                    variant={selectedMainCategory === 'all' ? 'filled' : 'outlined'}
+                    sx={{
+                      fontWeight: selectedMainCategory === 'all' ? 600 : 400,
+                      fontSize: '0.75rem',
+                      height: 26,
+                      bgcolor: selectedMainCategory === 'all' ? theme.palette.mode === 'dark' ? '#444' : '#333' : 'transparent',
+                      color: selectedMainCategory === 'all' ? '#fff' : 'text.secondary',
+                      borderColor: theme.palette.divider,
+                      '&:hover': {
+                        bgcolor: selectedMainCategory === 'all'
+                          ? theme.palette.mode === 'dark' ? '#555' : '#444'
+                          : theme.palette.action.hover,
+                      },
+                    }}
+                  />
+                  {/* Main category chips */}
+                  {(Object.keys(mainCategoryConfig) as MainCategory[]).map((mainCat) => {
+                    const config = mainCategoryConfig[mainCat];
+                    const isSelected = selectedMainCategory === mainCat;
+                    const isExpanded = expandedMainCategory === mainCat;
 
-                  return (
-                    <Chip
-                      key={category}
-                      label={`${icon} ${category}`}
-                      size="small"
-                      variant={isSelected ? 'filled' : 'outlined'}
-                      onClick={() => setSelectedSubCategory(category)}
-                      sx={{
-                        fontWeight: isSelected ? 600 : 400,
-                        fontSize: '0.75rem',
-                        height: 26,
-                        bgcolor: isSelected ? color : 'transparent',
-                        color: isSelected ? '#fff' : 'text.secondary',
-                        borderColor: isSelected ? color : theme.palette.divider,
-                        '&:hover': {
-                          bgcolor: isSelected ? color : `${color}20`,
-                          borderColor: color,
-                        },
-                      }}
-                    />
-                  );
-                })}
+                    return (
+                      <Chip
+                        key={mainCat}
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <span>{config.icon}</span>
+                            <span>{mainCat}</span>
+                            {isSelected && (
+                              isExpanded ? <ExpandLessIcon sx={{ fontSize: 14, ml: 0.25 }} /> : <ExpandMoreIcon sx={{ fontSize: 14, ml: 0.25 }} />
+                            )}
+                          </Box>
+                        }
+                        size="small"
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        onClick={() => handleMainCategoryClick(mainCat)}
+                        sx={{
+                          fontWeight: isSelected ? 600 : 400,
+                          fontSize: '0.75rem',
+                          height: 26,
+                          bgcolor: isSelected ? config.color : 'transparent',
+                          color: isSelected ? '#fff' : 'text.secondary',
+                          borderColor: isSelected ? config.color : theme.palette.divider,
+                          '&:hover': {
+                            bgcolor: isSelected ? config.color : `${config.color}20`,
+                            borderColor: config.color,
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
               </Box>
+
+              {/* Sub-category tags (shown when main category is expanded) */}
+              {expandedMainCategory && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    flexWrap: 'wrap',
+                    pl: { xs: 0, sm: 5 },
+                    py: 1,
+                    borderLeft: { xs: 'none', sm: `2px solid ${mainCategoryConfig[expandedMainCategory].color}` },
+                    ml: { xs: 0, sm: 1 },
+                  }}
+                >
+                  <Chip
+                    label={language === 'ko' ? '전체' : 'All'}
+                    size="small"
+                    onClick={() => setSelectedSubTag('all')}
+                    variant={selectedSubTag === 'all' ? 'filled' : 'outlined'}
+                    sx={{
+                      fontWeight: selectedSubTag === 'all' ? 600 : 400,
+                      fontSize: '0.7rem',
+                      height: 22,
+                      bgcolor: selectedSubTag === 'all' ? mainCategoryConfig[expandedMainCategory].color : 'transparent',
+                      color: selectedSubTag === 'all' ? '#fff' : 'text.secondary',
+                      borderColor: theme.palette.divider,
+                      '&:hover': {
+                        bgcolor: selectedSubTag === 'all'
+                          ? mainCategoryConfig[expandedMainCategory].color
+                          : theme.palette.action.hover,
+                      },
+                    }}
+                  />
+                  {mainCategoryConfig[expandedMainCategory].subCategories.map((subTag) => {
+                    const isSelected = selectedSubTag === subTag;
+                    const color = subCategoryColors[subTag];
+
+                    return (
+                      <Chip
+                        key={subTag}
+                        label={subTag}
+                        size="small"
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        onClick={() => setSelectedSubTag(subTag)}
+                        sx={{
+                          fontWeight: isSelected ? 600 : 400,
+                          fontSize: '0.7rem',
+                          height: 22,
+                          bgcolor: isSelected ? color : 'transparent',
+                          color: isSelected ? '#fff' : 'text.secondary',
+                          borderColor: isSelected ? color : theme.palette.divider,
+                          '&:hover': {
+                            bgcolor: isSelected ? color : `${color}20`,
+                            borderColor: color,
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
             </Box>
           )}
         </Box>

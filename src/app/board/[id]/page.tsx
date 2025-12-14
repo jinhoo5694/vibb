@@ -112,6 +112,7 @@ export default function PostDetailPage() {
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [commentPage, setCommentPage] = useState(1);
+  const [commentSort, setCommentSort] = useState<'popular' | 'newest'>('popular');
 
   const postId = params.id as string;
   const POSTS_PER_PAGE = 15;
@@ -137,13 +138,28 @@ export default function PostDetailPage() {
 
   const totalPages = Math.ceil(allPosts.length / POSTS_PER_PAGE);
 
-  // Comment pagination
+  // Sort and paginate comments
+  const sortedComments = useMemo(() => {
+    const sorted = [...comments];
+    if (commentSort === 'popular') {
+      sorted.sort((a, b) => b.upvotes - a.upvotes);
+    } else {
+      sorted.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+    return sorted;
+  }, [comments, commentSort]);
+
   const paginatedComments = useMemo(() => {
     const startIndex = (commentPage - 1) * COMMENTS_PER_PAGE;
-    return comments.slice(startIndex, startIndex + COMMENTS_PER_PAGE);
-  }, [comments, commentPage]);
+    return sortedComments.slice(startIndex, startIndex + COMMENTS_PER_PAGE);
+  }, [sortedComments, commentPage]);
 
   const totalCommentPages = Math.ceil(comments.length / COMMENTS_PER_PAGE);
+
+  // Reset comment page when sort changes
+  useEffect(() => {
+    setCommentPage(1);
+  }, [commentSort]);
 
   useEffect(() => {
     // Find post from sample data
@@ -451,39 +467,47 @@ export default function PostDetailPage() {
 
         {/* Comments Section */}
         <Box sx={{ mt: 4 }}>
-          {/* Comment Header */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {language === 'ko' ? '댓글' : 'Comments'} ({comments.length})
-            </Typography>
-          </Box>
-
-          {/* New Comment Input */}
-          <Box sx={{ mb: 3 }}>
+          {/* New Comment Input Box */}
+          <Box
+            sx={{
+              mb: 3,
+              p: 2.5,
+              borderRadius: 2,
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#fafafa',
+            }}
+          >
             {user ? (
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 40, height: 40 }}>
+                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 36, height: 36 }}>
                   {user.email?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
                   <TextField
                     fullWidth
                     multiline
-                    rows={3}
+                    rows={2}
                     placeholder={language === 'ko' ? '댓글을 입력하세요...' : 'Write a comment...'}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
+                        borderRadius: 1.5,
+                        bgcolor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#ffffff',
                       },
                     }}
                   />
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
                     <Button
                       variant="contained"
+                      size="small"
                       onClick={handleSubmitComment}
                       disabled={!newComment.trim()}
+                      sx={{
+                        bgcolor: '#ff6b35',
+                        '&:hover': { bgcolor: '#e55a2b' },
+                        '&:disabled': { bgcolor: theme.palette.action.disabledBackground },
+                      }}
                     >
                       {language === 'ko' ? '댓글 등록' : 'Post Comment'}
                     </Button>
@@ -491,12 +515,72 @@ export default function PostDetailPage() {
                 </Box>
               </Box>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                   {language === 'ko' ? '댓글을 작성하려면 로그인하세요' : 'Sign in to write a comment'}
                 </Typography>
-                <Button variant="outlined" size="small">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#ff6b35',
+                    color: '#ff6b35',
+                    '&:hover': {
+                      borderColor: '#e55a2b',
+                      bgcolor: 'rgba(255, 107, 53, 0.08)',
+                    },
+                  }}
+                >
                   {language === 'ko' ? '로그인' : 'Sign In'}
+                </Button>
+              </Box>
+            )}
+          </Box>
+
+          {/* Comment Header with Sort */}
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {language === 'ko' ? '댓글' : 'Comments'} ({comments.length})
+            </Typography>
+            {comments.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Button
+                  size="small"
+                  variant={commentSort === 'popular' ? 'contained' : 'text'}
+                  onClick={() => setCommentSort('popular')}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.25,
+                    fontSize: '0.75rem',
+                    fontWeight: commentSort === 'popular' ? 600 : 400,
+                    bgcolor: commentSort === 'popular' ? '#ff6b35' : 'transparent',
+                    color: commentSort === 'popular' ? '#fff' : 'text.secondary',
+                    '&:hover': {
+                      bgcolor: commentSort === 'popular' ? '#e55a2b' : 'rgba(0,0,0,0.04)',
+                    },
+                  }}
+                >
+                  {language === 'ko' ? '인기순' : 'Popular'}
+                </Button>
+                <Button
+                  size="small"
+                  variant={commentSort === 'newest' ? 'contained' : 'text'}
+                  onClick={() => setCommentSort('newest')}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.25,
+                    fontSize: '0.75rem',
+                    fontWeight: commentSort === 'newest' ? 600 : 400,
+                    bgcolor: commentSort === 'newest' ? '#ff6b35' : 'transparent',
+                    color: commentSort === 'newest' ? '#fff' : 'text.secondary',
+                    '&:hover': {
+                      bgcolor: commentSort === 'newest' ? '#e55a2b' : 'rgba(0,0,0,0.04)',
+                    },
+                  }}
+                >
+                  {language === 'ko' ? '최신순' : 'Newest'}
                 </Button>
               </Box>
             )}
