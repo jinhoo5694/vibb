@@ -40,6 +40,8 @@ import {
   MenuBook as GuideIcon,
   GitHub as GitHubIcon,
   Google as GoogleIcon,
+  Extension as ExtensionIcon,
+  Hub as McpIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -52,31 +54,25 @@ import {
 } from '@mui/icons-material';
 
 // Sub-menu items for each section
-const skillsSubMenu = [
-  { label: '스킬 탐색', labelEn: 'Explore', href: '/skills/explore', icon: <ExploreIcon fontSize="small" />, description: '모든 스킬 보기', descriptionEn: 'Browse all skills' },
-  { label: '카테고리', labelEn: 'Categories', href: '/skills/categories', icon: <CategoryIcon fontSize="small" />, description: '카테고리별 탐색', descriptionEn: 'Browse by category' },
-  { label: '스킬 소개', labelEn: 'About Skills', href: '/skills/hub', icon: <InfoIcon fontSize="small" />, description: '클로드 스킬이란?', descriptionEn: 'What are Claude Skills?' },
-  { label: '가이드', labelEn: 'Guide', href: '/skills/guide', icon: <GuideIcon fontSize="small" />, description: '설치 및 사용법', descriptionEn: 'Installation & usage' },
+const aiExtensionSubMenu = [
+  { label: '스킬', labelEn: 'Skills', href: '/skills', icon: <SkillsIcon fontSize="small" />, description: '클로드 스킬 탐색', descriptionEn: 'Browse Claude Skills' },
+  { label: 'MCP', labelEn: 'MCP', href: '/mcp', icon: <McpIcon fontSize="small" />, description: 'Model Context Protocol', descriptionEn: 'Model Context Protocol' },
 ];
 
-const mcpSubMenu = [
-  { label: 'MCP 소개', labelEn: 'About MCP', href: '/mcp/hub', icon: <InfoIcon fontSize="small" />, description: 'MCP란?', descriptionEn: 'What is MCP?' },
-];
-
-const promptSubMenu = [
-  { label: '프롬프트 소개', labelEn: 'About Prompts', href: '/prompt/hub', icon: <InfoIcon fontSize="small" />, description: '프롬프트란?', descriptionEn: 'What are Prompts?' },
-];
-
-const aiToolsSubMenu = [
-  { label: 'AI 코딩 툴 소개', labelEn: 'About AI Coding Tools', href: '/ai-tools/hub', icon: <InfoIcon fontSize="small" />, description: 'AI 코딩 툴이란?', descriptionEn: 'What are AI Coding Tools?' },
-];
+type SubMenuItem = {
+  label: string;
+  labelEn: string;
+  href: string;
+  icon: React.ReactElement;
+  description: string;
+  descriptionEn: string;
+  isCategory?: boolean;
+  indent?: boolean;
+};
 
 // Map of submenus by href
-const subMenuMap: Record<string, typeof skillsSubMenu> = {
-  '/skills': skillsSubMenu,
-  '/mcp': mcpSubMenu,
-  '/prompt': promptSubMenu,
-  '/ai-tools': aiToolsSubMenu,
+const subMenuMap: Record<string, SubMenuItem[]> = {
+  '/ai-extension': aiExtensionSubMenu,
 };
 
 export const Header: React.FC = () => {
@@ -88,9 +84,13 @@ export const Header: React.FC = () => {
   const pathname = usePathname();
 
   // Check if a path is active
-  const isActivePath = (href: string) => {
+  const isActivePath = (href: string, activePaths?: string[]) => {
     if (href === '/') {
       return pathname === '/';
+    }
+    // Check activePaths array if provided (for merged menus like AI 확장)
+    if (activePaths && activePaths.length > 0) {
+      return activePaths.some(path => pathname.startsWith(path));
     }
     return pathname.startsWith(href);
   };
@@ -185,10 +185,9 @@ export const Header: React.FC = () => {
   const navigationItems = [
     { label: '홈', labelEn: 'Home', href: '/', icon: <HomeIcon /> },
     { label: '커뮤니티', labelEn: 'Community', href: '/board', icon: <ForumIcon /> },
-    { label: 'AI 코딩 툴', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon />, hasSubmenu: true },
-    { label: '프롬프트', labelEn: 'Prompt', href: '/prompt', icon: <ExploreIcon />, hasSubmenu: true },
-    { label: 'MCP', labelEn: 'MCP', href: '/mcp', icon: <CategoryIcon />, hasSubmenu: true },
-    { label: '스킬', labelEn: 'Skills', href: '/skills', icon: <SkillsIcon />, hasSubmenu: true },
+    { label: 'AI 코딩 툴', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon /> },
+    { label: '프롬프트', labelEn: 'Prompt', href: '/prompt', icon: <ExploreIcon /> },
+    { label: 'AI 확장', labelEn: 'AI Extension', href: '/ai-extension', icon: <ExtensionIcon />, hasSubmenu: true, activePaths: ['/skills', '/mcp'] },
     { label: '뉴스', labelEn: 'News', href: '/news', icon: <ExploreIcon /> },
   ];
 
@@ -253,12 +252,12 @@ export const Header: React.FC = () => {
                     >
                       <Button
                         component={Link}
-                        href={item.href}
+                        href={item.activePaths?.[0] || item.href}
                         color="inherit"
                         endIcon={activeMenuHref === item.href ? <ArrowUpIcon /> : <ArrowDownIcon />}
                         sx={{
-                          fontWeight: isActivePath(item.href) ? 700 : 400,
-                          borderBottom: isActivePath(item.href) ? `2px solid ${theme.palette.primary.main}` : 'none',
+                          fontWeight: isActivePath(item.href, item.activePaths) ? 700 : 400,
+                          borderBottom: isActivePath(item.href, item.activePaths) ? `2px solid ${theme.palette.primary.main}` : 'none',
                           borderRadius: 0,
                           pb: 0.5,
                           '&:hover': {
@@ -330,10 +329,17 @@ export const Header: React.FC = () => {
                       href={subItem.href}
                       onClick={handleNavMenuClose}
                       sx={{
-                        py: 1.5,
+                        py: 'isCategory' in subItem && subItem.isCategory ? 1 : 1.5,
                         px: 2,
+                        pl: 'indent' in subItem && subItem.indent ? 4 : 2,
                         gap: 1.5,
-                        bgcolor: pathname === subItem.href ? `${theme.palette.primary.main}10` : 'transparent',
+                        bgcolor: pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+                          ? `${theme.palette.primary.main}10`
+                          : 'transparent',
+                        borderTop: 'isCategory' in subItem && subItem.isCategory && subItem.href !== '/skills'
+                          ? `1px solid ${theme.palette.divider}`
+                          : 'none',
+                        mt: 'isCategory' in subItem && subItem.isCategory && subItem.href !== '/skills' ? 1 : 0,
                         '&:hover': {
                           bgcolor: `${theme.palette.primary.main}15`,
                         },
@@ -343,7 +349,13 @@ export const Header: React.FC = () => {
                         {subItem.icon}
                       </Box>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 'isCategory' in subItem && subItem.isCategory ? 700 : 600,
+                            fontSize: 'isCategory' in subItem && subItem.isCategory ? '0.95rem' : '0.875rem',
+                          }}
+                        >
                           {language === 'ko' ? subItem.label : subItem.labelEn}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
@@ -483,7 +495,7 @@ export const Header: React.FC = () => {
           {/* Navigation Links */}
           <List sx={{ flexGrow: 1 }}>
             {navigationItems.map((item) => {
-              const isActive = isActivePath(item.href);
+              const isActive = isActivePath(item.href, item.activePaths);
               const isExpanded = mobileExpandedMenu === item.href;
               const subMenu = subMenuMap[item.href];
 
@@ -523,8 +535,14 @@ export const Header: React.FC = () => {
                             href={subItem.href}
                             onClick={handleMobileNavClick}
                             sx={{
-                              pl: 4,
-                              bgcolor: pathname === subItem.href ? `${theme.palette.primary.main}10` : 'transparent',
+                              pl: 'indent' in subItem && subItem.indent ? 6 : 4,
+                              bgcolor: pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+                                ? `${theme.palette.primary.main}10`
+                                : 'transparent',
+                              borderTop: 'isCategory' in subItem && subItem.isCategory && subItem.href !== '/skills'
+                                ? `1px solid ${theme.palette.divider}`
+                                : 'none',
+                              mt: 'isCategory' in subItem && subItem.isCategory && subItem.href !== '/skills' ? 1 : 0,
                             }}
                           >
                             <ListItemIcon sx={{ minWidth: 36, color: theme.palette.primary.main }}>
@@ -533,7 +551,10 @@ export const Header: React.FC = () => {
                             <ListItemText
                               primary={language === 'ko' ? subItem.label : subItem.labelEn}
                               secondary={language === 'ko' ? subItem.description : subItem.descriptionEn}
-                              primaryTypographyProps={{ fontSize: '0.9rem' }}
+                              primaryTypographyProps={{
+                                fontSize: '0.9rem',
+                                fontWeight: 'isCategory' in subItem && subItem.isCategory ? 700 : 400,
+                              }}
                               secondaryTypographyProps={{ fontSize: '0.75rem' }}
                             />
                           </ListItemButton>
