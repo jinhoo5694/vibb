@@ -37,8 +37,10 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
       // Today - show time
       return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
     } else {
-      // Older - show date
-      return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace('. ', '.').replace('.', '');
+      // Older - show date as MM.DD
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${month}.${day}`;
     }
   };
 
@@ -61,22 +63,6 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
           minHeight: 44,
         }}
       >
-        {/* Post Number - Hidden on mobile */}
-        {!isMobile && (
-          <Typography
-            variant="caption"
-            sx={{
-              width: 60,
-              flexShrink: 0,
-              color: 'text.disabled',
-              textAlign: 'center',
-              fontSize: '0.8rem',
-            }}
-          >
-            {post.id}
-          </Typography>
-        )}
-
         {/* Category - Compact chip */}
         {showCategory && (
           <Box sx={{ width: { xs: 50, sm: 70 }, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
@@ -132,21 +118,47 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
         </Box>
 
         {/* Author */}
-        <Typography
-          variant="caption"
-          sx={{
-            width: { xs: 60, sm: 90 },
-            flexShrink: 0,
-            color: 'text.secondary',
-            textAlign: 'center',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: '0.75rem',
-          }}
-        >
-          {post.author.name}
-        </Typography>
+        {post.author.id ? (
+          <Typography
+            component={Link}
+            href={`/profile/${post.author.id}`}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            variant="caption"
+            sx={{
+              width: { xs: 60, sm: 90 },
+              flexShrink: 0,
+              color: 'text.secondary',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.75rem',
+              textDecoration: 'none',
+              '&:hover': {
+                color: 'primary.main',
+                textDecoration: 'underline',
+              },
+            }}
+          >
+            {post.author.name}
+          </Typography>
+        ) : (
+          <Typography
+            variant="caption"
+            sx={{
+              width: { xs: 60, sm: 90 },
+              flexShrink: 0,
+              color: 'text.secondary',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.75rem',
+            }}
+          >
+            {post.author.name}
+          </Typography>
+        )}
 
         {/* Date */}
         <Typography
@@ -214,22 +226,6 @@ const TableHeader: React.FC<{ showCategory: boolean }> = ({ showCategory }) => {
         bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8fafc',
       }}
     >
-      {!isMobile && (
-        <Typography
-          variant="caption"
-          sx={{
-            width: 60,
-            flexShrink: 0,
-            color: 'text.secondary',
-            textAlign: 'center',
-            fontWeight: 600,
-            fontSize: '0.75rem',
-          }}
-        >
-          {language === 'ko' ? '번호' : 'No.'}
-        </Typography>
-      )}
-
       {showCategory && (
         <Typography
           variant="caption"

@@ -21,21 +21,21 @@ export const FeatureBoxes: React.FC = () => {
       description: t('features.whatIs.description'),
       icon: <LightbulbIcon sx={{ fontSize: 48 }} />,
       gradient: 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
-      href: '/about',
+      href: '/skills/what',
     },
     {
       title: t('features.howToUse.title'),
       description: t('features.howToUse.description'),
       icon: <SchoolIcon sx={{ fontSize: 48 }} />,
       gradient: 'linear-gradient(135deg, #ffc857 0%, #6BCF7F 100%)',
-      href: '/guide',
+      href: '/skills/how',
     },
     {
       title: t('features.whyUse.title'),
       description: t('features.whyUse.description'),
       icon: <RocketIcon sx={{ fontSize: 48 }} />,
       gradient: 'linear-gradient(135deg, #6BCF7F 0%, #FF85A6 100%)',
-      href: '/benefits',
+      href: '/skills/why',
     },
   ];
 

@@ -229,22 +229,49 @@ export const PostNavigationList: React.FC<PostNavigationListProps> = ({
               </Box>
 
               {/* Author */}
-              <Typography
-                variant="caption"
-                sx={{
-                  width: 70,
-                  flexShrink: 0,
-                  color: 'text.secondary',
-                  textAlign: 'center',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: '0.75rem',
-                  display: { xs: 'none', sm: 'block' },
-                }}
-              >
-                {post.author.name}
-              </Typography>
+              {post.author.id ? (
+                <Typography
+                  component={Link}
+                  href={`/profile/${post.author.id}`}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  variant="caption"
+                  sx={{
+                    width: 70,
+                    flexShrink: 0,
+                    color: 'text.secondary',
+                    textAlign: 'center',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.75rem',
+                    display: { xs: 'none', sm: 'block' },
+                    textDecoration: 'none',
+                    '&:hover': {
+                      color: 'primary.main',
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  {post.author.name}
+                </Typography>
+              ) : (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 70,
+                    flexShrink: 0,
+                    color: 'text.secondary',
+                    textAlign: 'center',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.75rem',
+                    display: { xs: 'none', sm: 'block' },
+                  }}
+                >
+                  {post.author.name}
+                </Typography>
+              )}
 
               {/* Date */}
               <Typography

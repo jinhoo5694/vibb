@@ -1,10 +1,13 @@
 // Database types matching new Supabase schema
 
 // Content type enum (matches USER-DEFINED type in database)
-export type ContentType = 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post';
+export type ContentType = 'skill' | 'mcp' | 'prompt' | 'post' | 'ai_tool';
 
-// App role enum
-export type AppRole = 'user' | 'admin' | 'moderator';
+// Content status enum (matches USER-DEFINED type in database)
+export type ContentStatus = 'pending' | 'published' | 'blocked';
+
+// App role enum (matches USER-DEFINED type in database)
+export type AppRole = 'user' | 'admin' | 'withdrawal';
 
 // Profile (user) table
 export interface Profile {
@@ -12,6 +15,7 @@ export interface Profile {
   email: string | null;
   nickname: string;
   avatar_url: string | null;
+  bio: Record<string, unknown> | string | null; // JSONB in database
   role: AppRole;
   created_at: string;
 }
@@ -20,6 +24,7 @@ export interface Profile {
 export interface Tag {
   id: number;
   name: string;
+  tag_category: string;
 }
 
 // Content metadata structure (stored as JSONB)
@@ -64,11 +69,13 @@ export interface Content {
   id: string;
   author_id: string | null;
   type: ContentType;
+  status: ContentStatus;
   title: string;
   body: string | null;
   metadata: ContentMetadata | null;
   view_count: number;
-  is_public: boolean;
+  upvote_count: number;
+  downvote_count: number;
   created_at: string | null;
 }
 
@@ -76,9 +83,10 @@ export interface Content {
 export interface ContentWithRelations extends Content {
   author: Profile | null;
   tags: Tag[];
-  likes_count: number;
+  upvote_count: number;
+  downvote_count: number;
   reviews_count: number;
-  is_liked?: boolean;
+  user_vote?: 'upvote' | 'downvote' | null;
   is_bookmarked?: boolean;
 }
 
@@ -95,20 +103,28 @@ export interface Review {
 // Review with user
 export interface ReviewWithUser extends Review {
   user: Profile | null;
-  reply?: ReviewReply | null;
+  replies?: ReviewReplyWithUser[];
 }
 
 // Review reply table
 export interface ReviewReply {
   id: string;
+  review_id: string;
+  user_id: string;
   content: string;
   created_at: string | null;
 }
 
-// Content like table
-export interface ContentLike {
+// Review reply with user
+export interface ReviewReplyWithUser extends ReviewReply {
+  user: Profile | null;
+}
+
+// Content vote table
+export interface ContentVote {
   user_id: string;
   content_id: string;
+  vote_type: 'upvote' | 'downvote';
   created_at: string | null;
 }
 
@@ -239,7 +255,7 @@ export function contentToSkill(content: ContentWithRelations): SkillWithCategory
     icon: metadata.icon || null,
     comments_count: content.reviews_count,
     views_count: content.view_count,
-    likes_count: content.likes_count,
+    likes_count: content.upvote_count - content.downvote_count,
     download_url: metadata.download_url || null,
     tags: content.tags.map(t => t.name).join(','),
     categories: primaryTag?.id.toString() || '',

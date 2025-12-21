@@ -9,10 +9,6 @@ import { HeroBanner } from '@/components/Layout/HeroBanner';
 import { DiscoverSection } from '@/components/Layout/DiscoverSection';
 import { motion, useInView } from 'framer-motion';
 import {
-  VerifiedUser as VerifiedUserIcon,
-  Category as CategoryIcon,
-  People as PeopleIcon,
-  MenuBook as MenuBookIcon,
   ArrowForward as ArrowForwardIcon,
   Close as CloseIcon,
   Check as CheckIcon,
@@ -207,7 +203,7 @@ const BeforeDiagram = () => {
             mb: 3,
           }}
         >
-          💬 "{t('about.diagram.request')}"
+          "{t('about.diagram.request')}"
         </Typography>
       </Box>
 
@@ -253,7 +249,7 @@ const BeforeDiagram = () => {
         }}
       >
         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: theme.palette.error.main }}>
-          ❌ 문제점
+          {t('about.diagram.result.tracking')}
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {[
@@ -298,7 +294,7 @@ const AfterDiagram = () => {
             mb: 3,
           }}
         >
-          💬 "{t('about.diagram.request')}"
+          "{t('about.diagram.request')}"
         </Typography>
       </Box>
 
@@ -374,7 +370,7 @@ const AfterDiagram = () => {
         }}
       >
         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: theme.palette.success.main }}>
-          ✅ 개선사항
+          {t('about.diagram.result.simple')}
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {[
@@ -395,7 +391,7 @@ const AfterDiagram = () => {
 };
 
 // Section component with scroll animation
-const AnimatedSection = ({ children, delay = 0 }: any) => {
+const AnimatedSection = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
@@ -416,29 +412,6 @@ export default function AboutPage() {
   const theme = useTheme();
   const { t, language } = useLanguage();
   const router = useRouter();
-
-  const hubFeatures = [
-    {
-      icon: <VerifiedUserIcon sx={{ fontSize: 48 }} />,
-      title: t('about.hub.feature1.title'),
-      description: t('about.hub.feature1.description'),
-    },
-    {
-      icon: <CategoryIcon sx={{ fontSize: 48 }} />,
-      title: t('about.hub.feature2.title'),
-      description: t('about.hub.feature2.description'),
-    },
-    {
-      icon: <PeopleIcon sx={{ fontSize: 48 }} />,
-      title: t('about.hub.feature3.title'),
-      description: t('about.hub.feature3.description'),
-    },
-    {
-      icon: <MenuBookIcon sx={{ fontSize: 48 }} />,
-      title: t('about.hub.feature4.title'),
-      description: t('about.hub.feature4.description'),
-    },
-  ];
 
   return (
     <>
@@ -466,7 +439,7 @@ export default function AboutPage() {
               {language === 'ko' ? (
                 <>클로드 스킬은 클로드 AI의 능력을 <Highlight>특정 작업에 맞게 확장</Highlight>하는 <Highlight>전문 지식 패키지</Highlight>에요.</>
               ) : (
-                <>Claude Skills are <Highlight>expert knowledge packages</Highlight> that extend Claude AI's capabilities for <Highlight>specific tasks</Highlight>.</>
+                <>Claude Skills are <Highlight>expert knowledge packages</Highlight> that extend Claude AI&apos;s capabilities for <Highlight>specific tasks</Highlight>.</>
               )}
             </Typography>
             <Typography
@@ -644,7 +617,7 @@ export default function AboutPage() {
               {language === 'ko' ? (
                 <><Highlight>문서 작성 스킬</Highlight>을 예로 들어볼까요?</>
               ) : (
-                <>Let's take a <Highlight>document writing skill</Highlight> as an example.</>
+                <>Let&apos;s take a <Highlight>document writing skill</Highlight> as an example.</>
               )}
             </Typography>
             <Typography
@@ -852,7 +825,7 @@ export default function AboutPage() {
               {language === 'ko' ? (
                 <>클로드 스킬의 가장 큰 장점은 <Highlight>누구나 만들 수 있다</Highlight>는 점입니다. 특정 분야의 전문가라면, <Highlight>자신의 지식을 스킬로 만들어 다른 사람들과 공유</Highlight>할 수 있습니다. 디자이너, 마케터, 교사, 연구자 등 각자의 전문성을 담은 스킬을 만들 수 있어요.</>
               ) : (
-                <>The greatest advantage of Claude Skills is that <Highlight>anyone can create them</Highlight>. If you're an expert in a specific field, you can <Highlight>turn your knowledge into a skill and share it with others</Highlight>. Designers, marketers, teachers, researchers - everyone can create skills with their expertise.</>
+                <>The greatest advantage of Claude Skills is that <Highlight>anyone can create them</Highlight>. If you&apos;re an expert in a specific field, you can <Highlight>turn your knowledge into a skill and share it with others</Highlight>. Designers, marketers, teachers, researchers - everyone can create skills with their expertise.</>
               )}
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -860,7 +833,7 @@ export default function AboutPage() {
                 variant="contained"
                 size="large"
                 endIcon={<ArrowForwardIcon />}
-                onClick={() => router.push('/guide')}
+                onClick={() => router.push('/skills/how')}
                 sx={{
                   px: 4,
                   py: 1.5,
@@ -878,185 +851,6 @@ export default function AboutPage() {
               </Button>
             </Box>
           </Box>
-        </AnimatedSection>
-
-        {/* Divider */}
-        <Box
-          sx={{
-            height: 2,
-            background: `linear-gradient(90deg, transparent 0%, ${theme.palette.divider} 50%, transparent 100%)`,
-            mb: 8,
-          }}
-        />
-
-        {/* Hub Title */}
-        <AnimatedSection delay={0.5}>
-          <Box sx={{ mb: 6, textAlign: 'center' }}>
-            <Typography
-              variant="h3"
-              sx={{
-                fontWeight: 700,
-                mb: 2,
-                fontSize: { xs: '2rem', md: '2.5rem' },
-              }}
-            >
-              {t('about.hub.title')}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontSize: { xs: '1rem', md: '1.125rem' },
-                lineHeight: 1.8,
-                mb: 4,
-                color: theme.palette.text.secondary,
-              }}
-            >
-              {language === 'ko' ? (
-                <>클로드 스킬이 많아지면 <Highlight>어떤 스킬이 좋은지, 신뢰할 수 있는지</Highlight> 알기 어려워져요. 검증되지 않은 스킬을 사용하면 원하는 결과를 얻지 못하거나, 오히려 작업이 더 복잡해질 수 있어요.</>
-              ) : (
-                <>As Claude Skills multiply, it becomes difficult to know <Highlight>which skills are good and trustworthy</Highlight>. Using unverified skills may not give you the results you want, or may even make your work more complicated.</>
-              )}
-            </Typography>
-          </Box>
-        </AnimatedSection>
-
-        {/* Hub Solution */}
-        <AnimatedSection delay={0.6}>
-          <Box sx={{ mb: 6 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                mb: 2,
-                fontSize: { xs: '1.75rem', md: '2.125rem' },
-                textAlign: 'center',
-              }}
-            >
-              {t('about.hub.solution')}
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 4,
-                textAlign: 'center',
-                color: theme.palette.text.secondary,
-              }}
-            >
-              {language === 'ko' ? (
-                <>클로드 허브는 커뮤니티가 함께 만드는 <Highlight>검증된 스킬 라이브러리</Highlight>에요.</>
-              ) : (
-                <>Claude Hub is a <Highlight>verified skill library built together by the community</Highlight>.</>
-              )}
-            </Typography>
-          </Box>
-        </AnimatedSection>
-
-        {/* Hub Feature Cards */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-100px' }}
-          variants={staggerContainer}
-        >
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: 'repeat(1, 1fr)',
-                md: 'repeat(2, 1fr)',
-              },
-              gap: 3,
-              mb: 8,
-            }}
-          >
-            {hubFeatures.map((feature) => (
-              <motion.div key={feature.title} variants={fadeInUp}>
-                <Paper
-                  elevation={2}
-                  sx={{
-                    p: 4,
-                    height: '100%',
-                    transition: 'all 0.3s ease',
-                    borderRadius: '12px',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: theme.shadows[8],
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      color: theme.palette.primary.main,
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                    }}
-                  >
-                    {feature.icon}
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      {feature.title}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                    {feature.description}
-                  </Typography>
-                </Paper>
-              </motion.div>
-            ))}
-          </Box>
-        </motion.div>
-
-        {/* For Everyone CTA */}
-        <AnimatedSection delay={0.7}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 5,
-              textAlign: 'center',
-              borderRadius: '16px',
-              background:
-                theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)'
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-            }}
-          >
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                mb: 3,
-                fontSize: { xs: '1.75rem', md: '2.125rem' },
-              }}
-            >
-              {t('about.forEveryone.title')}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontSize: { xs: '1rem', md: '1.125rem' },
-                lineHeight: 1.8,
-                mb: 3,
-                opacity: 0.95,
-              }}
-            >
-              {language === 'ko' ? (
-                <>클로드 허브는 개발자뿐만 아니라, <Box component="span" sx={{ background: 'rgba(255, 255, 255, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>일반 사용자를 위한 공간</Box>이에요. 복잡한 기술 지식 없이도 필요한 스킬을 찾고, <Box component="span" sx={{ background: 'rgba(255, 255, 255, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>클로드의 능력을 최대한 활용</Box>할 수 있도록 도와드릴게요.</>
-              ) : (
-                <>Claude Hub is a space not only for developers but also for <Box component="span" sx={{ background: 'rgba(255, 255, 255, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>general users</Box>. We help you find the skills you need and <Box component="span" sx={{ background: 'rgba(255, 255, 255, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>make the most of Claude's capabilities</Box> without complex technical knowledge.</>
-              )}
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                fontSize: { xs: '1.1rem', md: '1.3rem' },
-              }}
-            >
-              {t('about.forEveryone.cta')}
-            </Typography>
-          </Paper>
         </AnimatedSection>
       </Container>
 

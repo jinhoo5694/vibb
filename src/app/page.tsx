@@ -21,13 +21,6 @@ import {
   ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
 
-const communityStats = [
-  { label: '빌더', value: '2,847', icon: '👥' },
-  { label: '게시글', value: '12,543', icon: '📝' },
-  { label: '스킬', value: '156', icon: '🎯' },
-  { label: 'MCP 서버', value: '89', icon: '🔌' },
-];
-
 type TabType = 'communicate' | 'start' | 'share';
 
 const tabs = [
@@ -486,41 +479,10 @@ export default function Home() {
                   fontSize: { xs: '1rem', sm: '1.2rem' },
                   fontWeight: 400,
                   color: 'rgba(255,255,255,0.9)',
-                  mb: 3,
                 }}
               >
                 바이브 코딩 커뮤니티 — AI와 함께 성장하는 빌더들의 공간
               </Typography>
-
-              {/* Community Stats */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: { xs: 2, sm: 4 },
-                  flexWrap: 'wrap',
-                }}
-              >
-                {communityStats.map((stat) => (
-                  <Box key={stat.label} sx={{ textAlign: 'center', px: 2 }}>
-                    <Typography
-                      sx={{
-                        fontSize: { xs: '1.5rem', sm: '2rem' },
-                        fontWeight: 700,
-                        color: '#fff',
-                      }}
-                    >
-                      {stat.icon} {stat.value}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}
-                    >
-                      {stat.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
             </Box>
           </motion.div>
         </Container>

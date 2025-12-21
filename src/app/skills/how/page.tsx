@@ -975,11 +975,11 @@ export default function GuidePage() {
       {/* Page Navigation */}
       <PageNavigation
         prevPage={{
-          href: '/about',
+          href: '/skills/what',
           label: t('features.whatIs.title'),
         }}
         nextPage={{
-          href: '/benefits',
+          href: '/skills/why',
           label: t('features.whyUse.title'),
         }}
       />

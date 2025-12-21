@@ -13,7 +13,9 @@
       "Bash(npm run build:*)",
       "Bash(cp:*)",
       "Bash(git remote add:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:app.affine.pro)"
     ],
     "deny": [],
     "ask": []

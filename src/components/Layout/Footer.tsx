@@ -2,12 +2,7 @@
 
 import React from 'react';
 import { Box, Container, Typography, Link as MuiLink, Divider, useTheme } from '@mui/material';
-import {
-  GitHub as GitHubIcon,
-  Twitter as TwitterIcon,
-  LinkedIn as LinkedInIcon,
-  Email as EmailIcon,
-} from '@mui/icons-material';
+import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Footer: React.FC = () => {
@@ -42,13 +37,6 @@ export const Footer: React.FC = () => {
     },
   ];
 
-  const socialLinks = [
-    { icon: <GitHubIcon />, href: 'https://github.com/anthropics', label: 'GitHub' },
-    { icon: <TwitterIcon />, href: 'https://twitter.com/anthropicai', label: 'Twitter' },
-    { icon: <LinkedInIcon />, href: 'https://linkedin.com/company/anthropic', label: 'LinkedIn' },
-    { icon: <EmailIcon />, href: 'mailto:contact@anthropic.com', label: 'Email' },
-  ];
-
   return (
     <Box
       component="footer"
@@ -77,45 +65,40 @@ export const Footer: React.FC = () => {
         >
           {/* Brand Section */}
           <Box>
-            <Typography
-              variant="h6"
+            <Box
+              component={Link}
+              href="/"
               sx={{
-                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                textDecoration: 'none',
                 mb: 2,
-                background: 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
               }}
             >
-              VIB Builders
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
+              <Box
+                component="img"
+                src={theme.palette.mode === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'}
+                alt="VIB Builders"
+                sx={{
+                  height: 36,
+                  width: 'auto',
+                }}
+              />
+              <Box
+                component="img"
+                src={theme.palette.mode === 'dark' ? '/textLogo-darkmode.svg' : '/textLogo.svg'}
+                alt="VIB Builders"
+                sx={{
+                  height: 22,
+                  width: 'auto',
+                }}
+              />
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
               바이브 코딩 커뮤니티. AI와 함께하는 새로운 개발 경험을 공유하고,
               함께 성장하는 빌더들의 공간입니다.
             </Typography>
-
-            {/* Social Links */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {socialLinks.map((social) => (
-                <MuiLink
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      color: theme.palette.primary.main,
-                      transform: 'translateY(-2px)',
-                    },
-                  }}
-                >
-                  {social.icon}
-                </MuiLink>
-              ))}
-            </Box>
           </Box>
 
           {/* Footer Links */}

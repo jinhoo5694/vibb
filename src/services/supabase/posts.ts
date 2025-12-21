@@ -1,6 +1,6 @@
 import { supabase } from './client';
-import { Content, ContentWithRelations, Profile, Tag } from '@/types/database';
-import { Post, PostCategory } from '@/types/post';
+import { Content, ContentWithRelations, Profile, Tag, Review, ReviewWithUser, ReviewReply, ReviewReplyWithUser } from '@/types/database';
+import { Post, PostCategory, MainCategory, SubCategoryTag } from '@/types/post';
 
 // Map PostCategory to ContentType
 const categoryToContentType: Record<PostCategory, string> = {
@@ -14,7 +14,7 @@ const categoryToContentType: Record<PostCategory, string> = {
 
 // Convert database content to Post format
 function contentToPost(content: ContentWithRelations): Post {
-  const metadata = content.metadata || {};
+  const metadata = (content.metadata || {}) as Record<string, unknown>;
 
   // Determine category from content type and metadata
   let category: PostCategory = '커뮤니티';
@@ -29,16 +29,20 @@ function contentToPost(content: ContentWithRelations): Post {
     title: content.title,
     content: content.body || '',
     author: {
+      id: content.author?.id || content.author_id || undefined,
       name: content.author?.nickname || content.author?.email?.split('@')[0] || 'Anonymous',
       avatar: content.author?.avatar_url || undefined,
     },
     category,
+    mainCategory: metadata.mainCategory as MainCategory | undefined,
+    subCategoryTag: metadata.subCategoryTag as SubCategoryTag | undefined,
     createdAt: new Date(content.created_at || Date.now()),
-    upvotes: content.likes_count || 0,
-    downvotes: 0, // We don't track downvotes in the current schema
+    upvotes: content.upvote_count || 0,
+    downvotes: content.downvote_count || 0,
     commentCount: content.reviews_count || 0,
+    viewCount: content.view_count || 0,
     tags: content.tags?.map(t => t.name) || [],
-    isPinned: metadata.is_pinned || false,
+    isPinned: (metadata.is_pinned as boolean) || false,
   };
 }
 
@@ -62,8 +66,7 @@ export async function getPosts(
         tag_id,
         tags:tag_id (id, name)
       )
-    `)
-    .eq('is_public', true);
+    `);
 
   // Filter by content type if specified
   if (contentType && contentType !== 'all') {
@@ -76,7 +79,7 @@ export async function getPosts(
       query = query.order('created_at', { ascending: false });
       break;
     case 'top':
-      query = query.order('view_count', { ascending: false });
+      query = query.order('upvote_count', { ascending: false });
       break;
     case 'hot':
     default:
@@ -94,19 +97,8 @@ export async function getPosts(
     return [];
   }
 
-  // Get likes count for each content
-  const contentIds = contents.map(c => c.id);
-  const { data: likesData } = await supabase
-    .from('content_likes')
-    .select('content_id')
-    .in('content_id', contentIds);
-
-  const likesCountMap: Record<string, number> = {};
-  likesData?.forEach(like => {
-    likesCountMap[like.content_id] = (likesCountMap[like.content_id] || 0) + 1;
-  });
-
   // Get reviews count for each content
+  const contentIds = contents.map(c => c.id);
   const { data: reviewsData } = await supabase
     .from('reviews')
     .select('content_id')
@@ -130,7 +122,8 @@ export async function getPosts(
       ...content,
       author: content.author as Profile | null,
       tags,
-      likes_count: likesCountMap[content.id] || 0,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
       reviews_count: reviewsCountMap[content.id] || 0,
     };
   });
@@ -183,27 +176,35 @@ export async function createPost(
     metadata?: Record<string, unknown>;
   }
 ): Promise<Content | null> {
+  const insertData = {
+    author_id: userId,
+    type: data.type,
+    title: data.title,
+    body: data.body,
+    metadata: data.metadata || {},
+  };
+
+  console.log('[createPost] Sending request with data:', {
+    userId,
+    insertData,
+    tags: data.tags,
+  });
+
   const { data: content, error } = await supabase
     .from('contents')
-    .insert({
-      author_id: userId,
-      type: data.type,
-      title: data.title,
-      body: data.body,
-      metadata: data.metadata || {},
-      is_public: true,
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating post:', error);
+    console.error('[createPost] Error creating post:', error);
     return null;
   }
 
+  console.log('[createPost] Post created successfully:', content);
+
   // Add tags if provided
   if (data.tags && data.tags.length > 0 && content) {
-    // First, get or create tags
     for (const tagName of data.tags) {
       // Check if tag exists
       const { data: existingTag } = await supabase
@@ -218,7 +219,7 @@ export async function createPost(
       if (!tagId) {
         const { data: newTag } = await supabase
           .from('tags')
-          .insert({ name: tagName })
+          .insert({ name: tagName, tag_category: 'topic' })
           .select('id')
           .single();
         tagId = newTag?.id;
@@ -236,44 +237,29 @@ export async function createPost(
   return content;
 }
 
-// Vote on a post (like/unlike)
+// Vote on a post (upvote/downvote) using RPC
 export async function votePost(
   userId: string,
   contentId: string,
   voteType: 'up' | 'down'
-): Promise<{ success: boolean; likes_count: number }> {
-  // Currently we only support likes (upvotes)
-  if (voteType === 'up') {
-    // Check if already liked
-    const { data: existingLike } = await supabase
-      .from('content_likes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('content_id', contentId)
-      .single();
+): Promise<{ success: boolean; action: 'added' | 'removed' | 'changed'; vote: 'upvote' | 'downvote' | null }> {
+  const voteValue = voteType === 'up' ? 'upvote' : 'downvote';
 
-    if (existingLike) {
-      // Unlike
-      await supabase
-        .from('content_likes')
-        .delete()
-        .eq('user_id', userId)
-        .eq('content_id', contentId);
-    } else {
-      // Like
-      await supabase
-        .from('content_likes')
-        .insert({ user_id: userId, content_id: contentId });
-    }
+  const { data, error } = await supabase.rpc('toggle_vote', {
+    target_content_id: contentId,
+    vote: voteValue,
+  });
+
+  if (error) {
+    console.error('Error voting:', error);
+    return { success: false, action: 'removed', vote: null };
   }
 
-  // Get updated likes count
-  const { count } = await supabase
-    .from('content_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('content_id', contentId);
-
-  return { success: true, likes_count: count || 0 };
+  return {
+    success: true,
+    action: data?.action || 'added',
+    vote: data?.action === 'removed' ? null : voteValue,
+  };
 }
 
 // Get post by ID
@@ -296,12 +282,6 @@ export async function getPostById(postId: string): Promise<Post | null> {
     return null;
   }
 
-  // Get likes count
-  const { count: likesCount } = await supabase
-    .from('content_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('content_id', postId);
-
   // Get reviews count
   const { count: reviewsCount } = await supabase
     .from('reviews')
@@ -319,7 +299,8 @@ export async function getPostById(postId: string): Promise<Post | null> {
     ...content,
     author: content.author as Profile | null,
     tags,
-    likes_count: likesCount || 0,
+    upvote_count: content.upvote_count || 0,
+    downvote_count: content.downvote_count || 0,
     reviews_count: reviewsCount || 0,
   };
 
@@ -327,20 +308,22 @@ export async function getPostById(postId: string): Promise<Post | null> {
 }
 
 // Delete a post
-export async function deletePost(postId: string, userId: string): Promise<boolean> {
-  // First verify ownership
-  const { data: content } = await supabase
-    .from('contents')
-    .select('author_id')
-    .eq('id', postId)
-    .single();
+export async function deletePost(postId: string, userId: string, isAdmin: boolean = false): Promise<boolean> {
+  // Verify ownership unless admin
+  if (!isAdmin) {
+    const { data: content } = await supabase
+      .from('contents')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
 
-  if (!content || content.author_id !== userId) {
-    return false;
+    if (!content || content.author_id !== userId) {
+      return false;
+    }
   }
 
   // Delete related data first
-  await supabase.from('content_likes').delete().eq('content_id', postId);
+  await supabase.from('content_votes').delete().eq('content_id', postId);
   await supabase.from('content_tags').delete().eq('content_id', postId);
   await supabase.from('reviews').delete().eq('content_id', postId);
   await supabase.from('bookmarks').delete().eq('content_id', postId);
@@ -352,4 +335,149 @@ export async function deletePost(postId: string, userId: string): Promise<boolea
     .eq('id', postId);
 
   return !error;
+}
+
+// ============================================
+// Comment Functions
+// ============================================
+
+export async function getPostComments(postId: string): Promise<ReviewWithUser[]> {
+  const { data: reviews, error } = await supabase
+    .from('reviews')
+    .select(`
+      *,
+      user:user_id (id, nickname, avatar_url, email),
+      replies:review_replies (
+        id,
+        review_id,
+        user_id,
+        content,
+        created_at,
+        user:user_id (id, nickname, avatar_url, email)
+      )
+    `)
+    .eq('content_id', postId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+
+  return (reviews || []).map(review => ({
+    ...review,
+    user: review.user as Profile | null,
+    replies: (review.replies || []).map((reply: ReviewReplyWithUser & { user: Profile | null }) => ({
+      ...reply,
+      user: reply.user as Profile | null,
+    })),
+  }));
+}
+
+export async function addPostComment(
+  userId: string,
+  postId: string,
+  content: string
+): Promise<Review | null> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert({
+      user_id: userId,
+      content_id: postId,
+      content,
+      rating: 0, // Posts don't have ratings, but field is required
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding comment:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function deletePostComment(reviewId: string): Promise<boolean> {
+  // First delete any replies
+  await supabase
+    .from('review_replies')
+    .delete()
+    .eq('review_id', reviewId);
+
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId);
+
+  return !error;
+}
+
+// ============================================
+// Reply Functions
+// ============================================
+
+export async function addReply(
+  userId: string,
+  reviewId: string,
+  content: string
+): Promise<ReviewReply | null> {
+  const { data, error } = await supabase
+    .from('review_replies')
+    .insert({
+      user_id: userId,
+      review_id: reviewId,
+      content,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding reply:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function deleteReply(replyId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('review_replies')
+    .delete()
+    .eq('id', replyId);
+
+  return !error;
+}
+
+// ============================================
+// Review Like Functions
+// ============================================
+
+export async function toggleReviewLike(
+  reviewId: string
+): Promise<{ success: boolean; action: 'liked' | 'unliked' }> {
+  const { data, error } = await supabase.rpc('toggle_review_like', {
+    target_review_id: reviewId,
+  });
+
+  if (error) {
+    console.error('Error toggling review like:', error);
+    return { success: false, action: 'unliked' };
+  }
+
+  return {
+    success: true,
+    action: data?.action || 'liked',
+  };
+}
+
+export async function hasUserLikedReview(userId: string, reviewId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('review_likes')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('review_id', reviewId)
+    .single();
+
+  return !!data;
 }
