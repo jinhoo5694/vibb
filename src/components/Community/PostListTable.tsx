@@ -61,22 +61,6 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
           minHeight: 44,
         }}
       >
-        {/* Post Number - Hidden on mobile */}
-        {!isMobile && (
-          <Typography
-            variant="caption"
-            sx={{
-              width: 60,
-              flexShrink: 0,
-              color: 'text.disabled',
-              textAlign: 'center',
-              fontSize: '0.8rem',
-            }}
-          >
-            {post.id}
-          </Typography>
-        )}
-
         {/* Category - Compact chip */}
         {showCategory && (
           <Box sx={{ width: { xs: 50, sm: 70 }, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
@@ -214,22 +198,6 @@ const TableHeader: React.FC<{ showCategory: boolean }> = ({ showCategory }) => {
         bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8fafc',
       }}
     >
-      {!isMobile && (
-        <Typography
-          variant="caption"
-          sx={{
-            width: 60,
-            flexShrink: 0,
-            color: 'text.secondary',
-            textAlign: 'center',
-            fontWeight: 600,
-            fontSize: '0.75rem',
-          }}
-        >
-          {language === 'ko' ? '번호' : 'No.'}
-        </Typography>
-      )}
-
       {showCategory && (
         <Typography
           variant="caption"

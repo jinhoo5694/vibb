@@ -7,7 +7,6 @@ import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { HeroBanner } from '@/components/Layout/HeroBanner';
 import { DiscoverSection } from '@/components/Layout/DiscoverSection';
-import { PageNavigation } from '@/components/Layout/PageNavigation';
 import { motion } from 'framer-motion';
 import {
   Speed as SpeedIcon,
@@ -271,7 +270,7 @@ export default function BenefitsPage() {
                             color: theme.palette.text.secondary,
                           }}
                         >
-                          "{testimonial.quote}"
+                          &quot;{testimonial.quote}&quot;
                         </Typography>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                           {testimonial.author}
@@ -288,14 +287,6 @@ export default function BenefitsPage() {
           </motion.div>
         </motion.div>
       </Container>
-
-      {/* Page Navigation */}
-      <PageNavigation
-        prevPage={{
-          href: '/guide',
-          label: t('features.howToUse.title'),
-        }}
-      />
 
       {/* Discover Section */}
       <DiscoverSection />
