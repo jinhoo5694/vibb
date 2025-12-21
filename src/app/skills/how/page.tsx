@@ -12,6 +12,7 @@ import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { HeroBanner } from '@/components/Layout/HeroBanner';
+import { PageNavigation } from '@/components/Layout/PageNavigation';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getSkills } from '@/services/supabase';
@@ -970,6 +971,18 @@ export default function GuidePage() {
           )}
         </motion.div>
       </Container>
+
+      {/* Page Navigation */}
+      <PageNavigation
+        prevPage={{
+          href: '/skills/what',
+          label: t('features.whatIs.title'),
+        }}
+        nextPage={{
+          href: '/skills/why',
+          label: t('features.whyUse.title'),
+        }}
+      />
 
       {/* Footer */}
       <Footer />

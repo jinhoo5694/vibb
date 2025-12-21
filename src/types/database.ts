@@ -1,10 +1,13 @@
 // Database types matching new Supabase schema
 
 // Content type enum (matches USER-DEFINED type in database)
-export type ContentType = 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post';
+export type ContentType = 'skill' | 'mcp' | 'prompt' | 'post' | 'ai_tool';
 
-// App role enum
-export type AppRole = 'user' | 'admin' | 'moderator';
+// Content status enum (matches USER-DEFINED type in database)
+export type ContentStatus = 'pending' | 'published' | 'blocked';
+
+// App role enum (matches USER-DEFINED type in database)
+export type AppRole = 'user' | 'admin' | 'withdrawal';
 
 // Profile (user) table
 export interface Profile {
@@ -12,6 +15,7 @@ export interface Profile {
   email: string | null;
   nickname: string;
   avatar_url: string | null;
+  bio: Record<string, unknown> | string | null; // JSONB in database
   role: AppRole;
   created_at: string;
 }
@@ -65,6 +69,7 @@ export interface Content {
   id: string;
   author_id: string | null;
   type: ContentType;
+  status: ContentStatus;
   title: string;
   body: string | null;
   metadata: ContentMetadata | null;
@@ -98,14 +103,21 @@ export interface Review {
 // Review with user
 export interface ReviewWithUser extends Review {
   user: Profile | null;
-  reply?: ReviewReply | null;
+  replies?: ReviewReplyWithUser[];
 }
 
 // Review reply table
 export interface ReviewReply {
   id: string;
+  review_id: string;
+  user_id: string;
   content: string;
   created_at: string | null;
+}
+
+// Review reply with user
+export interface ReviewReplyWithUser extends ReviewReply {
+  user: Profile | null;
 }
 
 // Content vote table

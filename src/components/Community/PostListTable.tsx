@@ -37,8 +37,10 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
       // Today - show time
       return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
     } else {
-      // Older - show date
-      return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace('. ', '.').replace('.', '');
+      // Older - show date as MM.DD
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${month}.${day}`;
     }
   };
 
@@ -116,21 +118,47 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
         </Box>
 
         {/* Author */}
-        <Typography
-          variant="caption"
-          sx={{
-            width: { xs: 60, sm: 90 },
-            flexShrink: 0,
-            color: 'text.secondary',
-            textAlign: 'center',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: '0.75rem',
-          }}
-        >
-          {post.author.name}
-        </Typography>
+        {post.author.id ? (
+          <Typography
+            component={Link}
+            href={`/profile/${post.author.id}`}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            variant="caption"
+            sx={{
+              width: { xs: 60, sm: 90 },
+              flexShrink: 0,
+              color: 'text.secondary',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.75rem',
+              textDecoration: 'none',
+              '&:hover': {
+                color: 'primary.main',
+                textDecoration: 'underline',
+              },
+            }}
+          >
+            {post.author.name}
+          </Typography>
+        ) : (
+          <Typography
+            variant="caption"
+            sx={{
+              width: { xs: 60, sm: 90 },
+              flexShrink: 0,
+              color: 'text.secondary',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.75rem',
+            }}
+          >
+            {post.author.name}
+          </Typography>
+        )}
 
         {/* Date */}
         <Typography

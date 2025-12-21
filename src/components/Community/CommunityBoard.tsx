@@ -40,7 +40,6 @@ import {
 } from '@mui/icons-material';
 import { PostListTable } from '@/components/Community/PostListTable';
 import { getBoardPosts } from '@/services/supabase';
-import { samplePosts, getHotPosts, getNewPosts, getTopPosts } from '@/data/posts';
 import {
   Post,
   SortOption,
@@ -250,45 +249,42 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
           limit: 50,
         });
 
-        if (fetchedPosts.length > 0) {
-          setPosts(fetchedPosts);
-          setUsingSampleData(false);
-        } else {
-          // Fall back to sample data filtered by board category
-          let filteredSamplePosts: Post[];
-          if (isGeneralBoard) {
-            // General board shows ALL posts
-            filteredSamplePosts = samplePosts;
-          } else {
-            // Category-specific boards show only their category
-            filteredSamplePosts = samplePosts.filter(
-              p => p.category === mainCategory
-            );
-          }
-          setPosts(filteredSamplePosts);
-          setUsingSampleData(true);
-        }
+        setPosts(fetchedPosts);
+        setUsingSampleData(false);
       } catch (err) {
         console.error('Error fetching posts:', err);
-        // Fall back to sample data
-        let filteredSamplePosts: Post[];
-        if (isGeneralBoard) {
-          // General board shows ALL posts
-          filteredSamplePosts = samplePosts;
-        } else {
-          filteredSamplePosts = samplePosts.filter(
-            p => p.category === mainCategory
-          );
-        }
-        setPosts(filteredSamplePosts);
-        setUsingSampleData(true);
+        setError(language === 'ko' ? '게시글을 불러오는 데 실패했습니다' : 'Failed to load posts');
+        setPosts([]);
+        setUsingSampleData(false);
       } finally {
         setLoading(false);
       }
     }
 
     fetchPosts();
-  }, [boardType, isGeneralBoard, mainCategory]);
+  }, [boardType, language]);
+
+  // Helper function to get top posts by score
+  const getTopPosts = (postList: Post[]) => {
+    return [...postList].sort((a, b) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes));
+  };
+
+  // Helper function to get hot posts
+  const getHotPosts = (postList: Post[]) => {
+    const now = Date.now();
+    return [...postList].sort((a, b) => {
+      const hoursA = (now - a.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const hoursB = (now - b.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const scoreA = (a.upvotes - a.downvotes) / Math.pow(hoursA, 1.5);
+      const scoreB = (b.upvotes - b.downvotes) / Math.pow(hoursB, 1.5);
+      return scoreB - scoreA;
+    });
+  };
+
+  // Helper function to get new posts
+  const getNewPosts = (postList: Post[]) => {
+    return [...postList].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  };
 
   // Get popular posts (top 5 by upvotes)
   const popularPosts = useMemo(() => {
@@ -363,10 +359,25 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
     setExpandedMainCategory(null);
   };
 
-  // Handle main category click - just toggle expand/collapse
+  // Handle main category click - expand/collapse AND auto-select 'all'
   const handleMainCategoryClick = (category: MainCategory) => {
-    // Toggle expand/collapse for showing sub-tags
-    setExpandedMainCategory(expandedMainCategory === category ? null : category);
+    const isCurrentlyExpanded = expandedMainCategory === category;
+
+    if (isCurrentlyExpanded) {
+      // Collapsing: just close, don't change selection
+      setExpandedMainCategory(null);
+    } else {
+      // Expanding: open and auto-select 'all' for this category
+      setExpandedMainCategory(category);
+
+      // Auto-select 'all' for this category if not already selected
+      if (!selectedMainCategories.includes(category)) {
+        setSelectedMainCategories(prev => [...prev, category]);
+        // Clear any sub-tags from this category since we're selecting "all"
+        const categorySubTags = mainCategoryConfig[category].subCategories;
+        setSelectedSubTags(prev => prev.filter(t => !categorySubTags.includes(t)));
+      }
+    }
   };
 
   // Handle '전체' (All) button click within a main category - selects the main category

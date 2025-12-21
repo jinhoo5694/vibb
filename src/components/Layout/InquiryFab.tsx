@@ -39,18 +39,18 @@ export const InquiryFab: React.FC = () => {
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
-    type: 'general',
-    message: '',
+    type: 'bug_report',
+    title: '',
+    description: '',
   });
 
+  // Map to API type values
   const inquiryTypes = [
-    { value: 'general', label: t('inquiry.type.general') },
-    { value: 'bug', label: t('inquiry.type.bug') },
-    { value: 'feature', label: t('inquiry.type.feature') },
-    { value: 'partnership', label: t('inquiry.type.partnership') },
-    { value: 'other', label: t('inquiry.type.other') },
+    { value: 'bug_report', label: t('inquiry.type.bug') },
+    { value: 'feature_request', label: t('inquiry.type.feature') },
+    { value: 'business', label: t('inquiry.type.business') },
+    { value: 'account_issue', label: t('inquiry.type.account') },
   ];
 
   const handleOpen = () => {
@@ -63,10 +63,10 @@ export const InquiryFab: React.FC = () => {
     setOpen(false);
     if (success) {
       setFormData({
-        name: '',
         email: '',
-        type: 'general',
-        message: '',
+        type: 'bug_report',
+        title: '',
+        description: '',
       });
       setSuccess(false);
     }
@@ -85,13 +85,32 @@ export const InquiryFab: React.FC = () => {
     setError('');
 
     try {
+      // Build request body according to API spec
+      const requestBody: {
+        type: string;
+        email: string;
+        title: string;
+        description: string;
+        user_id?: string;
+      } = {
+        type: formData.type,
+        email: formData.email,
+        title: formData.title,
+        description: formData.description,
+      };
+
+      // Include user_id if logged in
+      if (user?.id) {
+        requestBody.user_id = user.id;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/send-inquiry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -101,10 +120,10 @@ export const InquiryFab: React.FC = () => {
 
       setSuccess(true);
       setFormData({
-        name: '',
         email: '',
-        type: 'general',
-        message: '',
+        type: 'bug_report',
+        title: '',
+        description: '',
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('inquiry.error'));
@@ -218,17 +237,6 @@ export const InquiryFab: React.FC = () => {
 
                 <TextField
                   fullWidth
-                  label={t('inquiry.name')}
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  margin="dense"
-                  disabled={loading}
-                />
-
-                <TextField
-                  fullWidth
                   label={t('inquiry.email')}
                   name="email"
                   type="email"
@@ -258,15 +266,28 @@ export const InquiryFab: React.FC = () => {
 
                 <TextField
                   fullWidth
-                  label={t('inquiry.message')}
-                  name="message"
-                  value={formData.message}
+                  label={t('inquiry.titleLabel')}
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                  margin="dense"
+                  disabled={loading}
+                  placeholder={t('inquiry.titlePlaceholder')}
+                />
+
+                <TextField
+                  fullWidth
+                  label={t('inquiry.description')}
+                  name="description"
+                  value={formData.description}
                   onChange={handleChange}
                   required
                   multiline
                   rows={4}
                   margin="dense"
                   disabled={loading}
+                  placeholder={t('inquiry.descriptionPlaceholder')}
                 />
               </>
             )}

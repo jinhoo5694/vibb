@@ -345,64 +345,16 @@ export async function toggleVote(
   userId: string,
   contentId: string,
   voteType: 'upvote' | 'downvote'
-): Promise<{ voted: 'upvote' | 'downvote' | null; upvoteCount: number; downvoteCount: number }> {
-  // Check if already voted
-  const { data: existingVote } = await supabase
-    .from('content_votes')
-    .select('vote_type')
-    .eq('user_id', userId)
-    .eq('content_id', contentId)
-    .single();
+): Promise<{ voted: 'upvote' | 'downvote' | null; upvoteCount: number; downvoteCount: number; action: 'added' | 'removed' | 'changed' }> {
+  // Use RPC for voting
+  const { data, error } = await supabase.rpc('toggle_vote', {
+    target_content_id: contentId,
+    vote: voteType,
+  });
 
-  if (existingVote) {
-    if (existingVote.vote_type === voteType) {
-      // Remove vote if same type
-      await supabase
-        .from('content_votes')
-        .delete()
-        .eq('user_id', userId)
-        .eq('content_id', contentId);
-
-      // Get updated counts
-      const { data: content } = await supabase
-        .from('contents')
-        .select('upvote_count, downvote_count')
-        .eq('id', contentId)
-        .single();
-
-      return {
-        voted: null,
-        upvoteCount: content?.upvote_count || 0,
-        downvoteCount: content?.downvote_count || 0,
-      };
-    } else {
-      // Change vote type
-      await supabase
-        .from('content_votes')
-        .update({ vote_type: voteType })
-        .eq('user_id', userId)
-        .eq('content_id', contentId);
-
-      // Get updated counts
-      const { data: content } = await supabase
-        .from('contents')
-        .select('upvote_count, downvote_count')
-        .eq('id', contentId)
-        .single();
-
-      return {
-        voted: voteType,
-        upvoteCount: content?.upvote_count || 0,
-        downvoteCount: content?.downvote_count || 0,
-      };
-    }
-  } else {
-    // Create new vote
-    await supabase
-      .from('content_votes')
-      .insert({ user_id: userId, content_id: contentId, vote_type: voteType });
-
-    // Get updated counts
+  if (error) {
+    console.error('Error toggling vote:', error);
+    // Return current state on error
     const { data: content } = await supabase
       .from('contents')
       .select('upvote_count, downvote_count')
@@ -410,11 +362,28 @@ export async function toggleVote(
       .single();
 
     return {
-      voted: voteType,
+      voted: null,
       upvoteCount: content?.upvote_count || 0,
       downvoteCount: content?.downvote_count || 0,
+      action: 'removed',
     };
   }
+
+  // Fetch updated counts after successful vote
+  const { data: content } = await supabase
+    .from('contents')
+    .select('upvote_count, downvote_count')
+    .eq('id', contentId)
+    .single();
+
+  const voted = data?.action === 'removed' ? null : voteType;
+
+  return {
+    voted,
+    upvoteCount: content?.upvote_count || 0,
+    downvoteCount: content?.downvote_count || 0,
+    action: data?.action || 'added',
+  };
 }
 
 // Legacy function - toggles upvote for backward compatibility
@@ -538,29 +507,24 @@ export async function getSkillAverageRating(skillId: string): Promise<number> {
 export async function toggleBookmark(
   userId: string,
   contentId: string
-): Promise<{ bookmarked: boolean }> {
-  const { data: existingBookmark } = await supabase
-    .from('bookmarks')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('content_id', contentId)
-    .single();
+): Promise<{ bookmarked: boolean; action: 'added' | 'removed' }> {
+  // Use RPC for toggling bookmark
+  const { data, error } = await supabase.rpc('toggle_bookmark', {
+    target_content_id: contentId,
+  });
 
-  if (existingBookmark) {
-    await supabase
-      .from('bookmarks')
-      .delete()
-      .eq('user_id', userId)
-      .eq('content_id', contentId);
-
-    return { bookmarked: false };
-  } else {
-    await supabase
-      .from('bookmarks')
-      .insert({ user_id: userId, content_id: contentId });
-
-    return { bookmarked: true };
+  if (error) {
+    console.error('Error toggling bookmark:', error);
+    // Return current state on error
+    const isBookmarked = await hasUserBookmarked(userId, contentId);
+    return { bookmarked: isBookmarked, action: isBookmarked ? 'added' : 'removed' };
   }
+
+  const action = data?.action || 'added';
+  return {
+    bookmarked: action === 'added',
+    action,
+  };
 }
 
 export async function hasUserBookmarked(userId: string, contentId: string): Promise<boolean> {

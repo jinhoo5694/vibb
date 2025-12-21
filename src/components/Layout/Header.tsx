@@ -42,6 +42,7 @@ import {
   Google as GoogleIcon,
   Extension as ExtensionIcon,
   Hub as McpIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -407,9 +408,13 @@ export const Header: React.FC = () => {
                         </Typography>
                       </Box>
                       <Divider />
+                      <MenuItem component={Link} href="/mypage" onClick={handleUserMenuClose}>
+                        <PersonIcon sx={{ mr: 1, fontSize: 20 }} />
+                        {language === 'ko' ? '마이페이지' : 'My Page'}
+                      </MenuItem>
                       <MenuItem onClick={handleSignOut}>
                         <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
-                        Sign Out
+                        {language === 'ko' ? '로그아웃' : 'Sign Out'}
                       </MenuItem>
                     </Menu>
                   </>
@@ -636,11 +641,23 @@ export const Header: React.FC = () => {
                   <Button
                     fullWidth
                     variant="outlined"
+                    color="primary"
+                    startIcon={<PersonIcon />}
+                    component={Link}
+                    href="/mypage"
+                    onClick={handleMobileNavClick}
+                    sx={{ mb: 1 }}
+                  >
+                    {language === 'ko' ? '마이페이지' : 'My Page'}
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
                     color="error"
                     startIcon={<LogoutIcon />}
                     onClick={handleSignOut}
                   >
-                    Sign Out
+                    {language === 'ko' ? '로그아웃' : 'Sign Out'}
                   </Button>
                 </Box>
               ) : (

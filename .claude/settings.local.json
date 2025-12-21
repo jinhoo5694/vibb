@@ -14,7 +14,8 @@
       "Bash(cp:*)",
       "Bash(git remote add:*)",
       "Bash(ls:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebFetch(domain:app.affine.pro)"
     ],
     "deny": [],
     "ask": []

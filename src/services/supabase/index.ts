@@ -14,9 +14,11 @@ export {
   // View counts
   incrementViewCount,
 
-  // Likes
+  // Likes/Votes
   toggleLike,
   hasUserLikedSkill,
+  toggleVote,
+  getUserVote,
 
   // Reviews (Comments)
   getSkillComments,
@@ -37,6 +39,13 @@ export {
   votePost,
   getPostById,
   deletePost,
+  getPostComments,
+  addPostComment,
+  deletePostComment,
+  addReply,
+  deleteReply,
+  toggleReviewLike,
+  hasUserLikedReview,
 } from './posts';
 
 // Search functions

@@ -116,15 +116,34 @@ export const PostCard: React.FC<PostCardProps> = ({ post, index = 0 }) => {
               }}
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Avatar
-                src={post.author.avatar}
-                sx={{ width: 20, height: 20, fontSize: '0.7rem' }}
+              <Box
+                component={post.author.id ? Link : 'span'}
+                href={post.author.id ? `/profile/${post.author.id}` : undefined}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  ...(post.author.id && {
+                    cursor: 'pointer',
+                    '&:hover .author-name': {
+                      color: 'primary.main',
+                      textDecoration: 'underline',
+                    },
+                  }),
+                }}
               >
-                {post.author.name.charAt(0)}
-              </Avatar>
-              <Typography variant="caption" color="text.secondary">
-                {post.author.name}
-              </Typography>
+                <Avatar
+                  src={post.author.avatar}
+                  sx={{ width: 20, height: 20, fontSize: '0.7rem' }}
+                >
+                  {post.author.name.charAt(0)}
+                </Avatar>
+                <Typography variant="caption" color="text.secondary" className="author-name">
+                  {post.author.name}
+                </Typography>
+              </Box>
               <Typography variant="caption" color="text.disabled">
                 •
               </Typography>

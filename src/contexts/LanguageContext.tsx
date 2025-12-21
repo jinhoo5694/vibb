@@ -120,10 +120,12 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Inquiry
     "inquiry.title": "문의하기",
-    "inquiry.name": "이름",
     "inquiry.email": "이메일",
     "inquiry.typeLabel": "문의 유형",
-    "inquiry.message": "메시지",
+    "inquiry.titleLabel": "제목",
+    "inquiry.titlePlaceholder": "문의 제목을 입력하세요",
+    "inquiry.description": "상세 내용",
+    "inquiry.descriptionPlaceholder": "문의 내용을 자세히 작성해주세요",
     "inquiry.submit": "문의 보내기",
     "inquiry.cancel": "취소",
     "inquiry.close": "닫기",
@@ -132,11 +134,10 @@ const translations: Record<Language, Record<string, string>> = {
     "inquiry.error": "문의 전송 중 오류가 발생했습니다. 다시 시도해주세요.",
     "inquiry.signInRequired": "문의를 보내려면 로그인이 필요합니다.",
     "inquiry.signIn": "Google로 로그인",
-    "inquiry.type.general": "일반 문의",
     "inquiry.type.bug": "버그 신고",
-    "inquiry.type.feature": "기능 요청",
-    "inquiry.type.partnership": "제휴 문의",
-    "inquiry.type.other": "기타",
+    "inquiry.type.feature": "기능 제안",
+    "inquiry.type.business": "비즈니스",
+    "inquiry.type.account": "계정 정지/제재 문의",
 
     // Feature Boxes
     "features.whatIs.title": "클로드 Skills란?",
@@ -469,10 +470,12 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Inquiry
     "inquiry.title": "Contact Us",
-    "inquiry.name": "Name",
     "inquiry.email": "Email",
     "inquiry.typeLabel": "Inquiry Type",
-    "inquiry.message": "Message",
+    "inquiry.titleLabel": "Title",
+    "inquiry.titlePlaceholder": "Enter inquiry title",
+    "inquiry.description": "Description",
+    "inquiry.descriptionPlaceholder": "Please describe your inquiry in detail",
     "inquiry.submit": "Send Inquiry",
     "inquiry.cancel": "Cancel",
     "inquiry.close": "Close",
@@ -482,11 +485,10 @@ const translations: Record<Language, Record<string, string>> = {
       "An error occurred while sending your inquiry. Please try again.",
     "inquiry.signInRequired": "Please sign in to send an inquiry.",
     "inquiry.signIn": "Sign in with Google",
-    "inquiry.type.general": "General Inquiry",
     "inquiry.type.bug": "Bug Report",
-    "inquiry.type.feature": "Feature Request",
-    "inquiry.type.partnership": "Partnership",
-    "inquiry.type.other": "Other",
+    "inquiry.type.feature": "Feature Suggestion",
+    "inquiry.type.business": "Business",
+    "inquiry.type.account": "Account Suspension/Sanction Inquiry",
 
     // Feature Boxes
     "features.whatIs.title": "What are Claude Skills?",

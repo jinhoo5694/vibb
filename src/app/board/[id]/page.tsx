@@ -10,7 +10,6 @@ import {
   Chip,
   IconButton,
   Button,
-  Divider,
   TextField,
   Paper,
   useTheme,
@@ -27,10 +26,12 @@ import {
   Bookmark as BookmarkFilledIcon,
   ArrowBack as BackIcon,
   MoreVert as MoreIcon,
-  ThumbUp as ThumbUpIcon,
   ThumbUpOutlined as ThumbUpOutlinedIcon,
+  ThumbUp as ThumbUpIcon,
   NavigateNext as NavigateNextIcon,
   Flag as FlagIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -40,60 +41,14 @@ import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { Post, categoryColors, categoryIcons, PostCategory } from '@/types/post';
-import { samplePosts, getNewPosts, filterByCategory } from '@/data/posts';
+import { ReviewWithUser } from '@/types/database';
+import { getPostById, getBoardPosts, getPostComments, addPostComment, deletePost, deletePostComment, addReply, deleteReply } from '@/services/supabase';
+import { createClient } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { ReportDialog } from '@/components/Community/ReportDialog';
 import { PostNavigationList } from '@/components/Community/PostNavigationList';
-
-// Sample comments data
-interface Comment {
-  id: string;
-  author: {
-    name: string;
-    avatar?: string;
-  };
-  content: string;
-  createdAt: Date;
-  upvotes: number;
-  replies?: Comment[];
-}
-
-const generateSampleComments = (count: number): Comment[] => {
-  const commentAuthors = [
-    '개발자A', 'ㅇㅇ', '바이브러', '클로드팬', '코딩마스터',
-    '뉴비개발자', '시니어개발자', '풀스택러', 'AI덕후', '프론트엔드러'
-  ];
-
-  const commentContents = [
-    '완전 공감합니다 ㅋㅋㅋ',
-    '저도 같은 경험 했어요!',
-    '이거 진짜 꿀팁이네요',
-    'ㅋㅋㅋㅋ 웃겨서 댓글 달고 감',
-    '오 좋은 정보 감사합니다',
-    '저는 좀 다른 의견인데...',
-    '이거 어떻게 하는건지 더 자세히 알 수 있을까요?',
-    '대박 ㅋㅋㅋㅋ',
-    '저도 써봐야겠네요',
-    '공감 100번 클릭',
-    'ㄹㅇ 팩트',
-    '이게 바로 바이브코딩이지',
-    '오늘도 좋은 하루 되세요~',
-    '저만 그런게 아니었군요 ㅋㅋ',
-    '꿀정보 감사해요!',
-  ];
-
-  return Array.from({ length: count }, (_, i) => ({
-    id: `comment-${i + 1}`,
-    author: {
-      name: commentAuthors[Math.floor(Math.random() * commentAuthors.length)],
-    },
-    content: commentContents[Math.floor(Math.random() * commentContents.length)],
-    createdAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24),
-    upvotes: Math.floor(Math.random() * 50),
-  }));
-};
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -104,22 +59,32 @@ export default function PostDetailPage() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<ReviewWithUser[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const [reportTargetId, setReportTargetId] = useState<string>('');
+  const [reportTargetType, setReportTargetType] = useState<'content' | 'review' | 'user'>('review');
   const [currentPage, setCurrentPage] = useState(1);
   const [commentPage, setCommentPage] = useState(1);
   const [commentSort, setCommentSort] = useState<'popular' | 'newest'>('popular');
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [deletingPost, setDeletingPost] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null);
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
 
   const postId = params.id as string;
   const POSTS_PER_PAGE = 15;
   const COMMENTS_PER_PAGE = 20;
 
-  // Get all posts sorted by date for navigation
-  const allPosts = useMemo(() => getNewPosts(samplePosts), []);
+  // State for all posts (for navigation)
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
 
   // Calculate which page the current post is on
   useEffect(() => {
@@ -142,9 +107,14 @@ export default function PostDetailPage() {
   const sortedComments = useMemo(() => {
     const sorted = [...comments];
     if (commentSort === 'popular') {
-      sorted.sort((a, b) => b.upvotes - a.upvotes);
+      // For now, sort by rating since we don't have upvotes on comments
+      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else {
-      sorted.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      sorted.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
     }
     return sorted;
   }, [comments, commentSort]);
@@ -161,20 +131,317 @@ export default function PostDetailPage() {
     setCommentPage(1);
   }, [commentSort]);
 
+  // Fetch user's role
   useEffect(() => {
-    // Find post from sample data
-    const foundPost = samplePosts.find(p => p.id === postId);
-    if (foundPost) {
-      setPost(foundPost);
-      // Generate sample comments based on comment count
-      setComments(generateSampleComments(foundPost.commentCount));
-    }
-    setLoading(false);
+    const fetchUserRole = async () => {
+      if (!user) {
+        setUserRole(null);
+        return;
+      }
+
+      const supabase = createClient();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setUserRole(profileData.role);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch post from Supabase
+        const foundPost = await getPostById(postId);
+        if (foundPost) {
+          setPost(foundPost);
+        }
+
+        // Fetch comments from Supabase
+        const fetchedComments = await getPostComments(postId);
+        setComments(fetchedComments);
+
+        // Fetch all posts for navigation list
+        const posts = await getBoardPosts('general', { sortBy: 'new' });
+        setAllPosts(posts);
+      } catch (error) {
+        console.error('Error fetching post:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [postId]);
+
+  // Fetch user's current vote status
+  useEffect(() => {
+    const fetchUserVote = async () => {
+      if (!user || !postId) {
+        setUserVote(null);
+        return;
+      }
+
+      try {
+        const { getUserVote } = await import('@/services/supabase');
+        const vote = await getUserVote(user.id, postId);
+        if (vote === 'upvote') {
+          setUserVote('up');
+        } else if (vote === 'downvote') {
+          setUserVote('down');
+        } else {
+          setUserVote(null);
+        }
+      } catch (error) {
+        console.error('Error fetching user vote:', error);
+      }
+    };
+
+    fetchUserVote();
+  }, [user, postId]);
+
+  // Fetch user's bookmark status
+  useEffect(() => {
+    const fetchBookmarkStatus = async () => {
+      if (!user || !postId) {
+        setIsBookmarked(false);
+        return;
+      }
+
+      try {
+        const { hasUserBookmarked } = await import('@/services/supabase');
+        const bookmarked = await hasUserBookmarked(user.id, postId);
+        setIsBookmarked(bookmarked);
+      } catch (error) {
+        console.error('Error fetching bookmark status:', error);
+      }
+    };
+
+    fetchBookmarkStatus();
+  }, [user, postId]);
+
+  const handleToggleBookmark = async () => {
+    if (!user) {
+      alert(language === 'ko' ? '로그인이 필요합니다.' : 'Please sign in to bookmark.');
+      return;
+    }
+
+    try {
+      const { toggleBookmark } = await import('@/services/supabase');
+      const result = await toggleBookmark(user.id, postId);
+      setIsBookmarked(result.bookmarked);
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
+  };
+
+  // Fetch which comments the user has liked
+  useEffect(() => {
+    const fetchLikedComments = async () => {
+      if (!user || comments.length === 0) {
+        setLikedComments(new Set());
+        return;
+      }
+
+      try {
+        const { hasUserLikedReview } = await import('@/services/supabase');
+        const liked = new Set<string>();
+
+        await Promise.all(
+          comments.map(async (comment) => {
+            const isLiked = await hasUserLikedReview(user.id, comment.id);
+            if (isLiked) {
+              liked.add(comment.id);
+            }
+          })
+        );
+
+        setLikedComments(liked);
+      } catch (error) {
+        console.error('Error fetching liked comments:', error);
+      }
+    };
+
+    fetchLikedComments();
+  }, [user, comments]);
+
+  const handleToggleCommentLike = async (commentId: string) => {
+    if (!user) {
+      alert(language === 'ko' ? '로그인이 필요합니다.' : 'Please sign in to like.');
+      return;
+    }
+
+    try {
+      const { toggleReviewLike } = await import('@/services/supabase');
+      const result = await toggleReviewLike(commentId);
+
+      if (result.success) {
+        setLikedComments(prev => {
+          const newSet = new Set(prev);
+          if (result.action === 'liked') {
+            newSet.add(commentId);
+          } else {
+            newSet.delete(commentId);
+          }
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling comment like:', error);
+    }
+  };
+
+  // Check if current user is admin
+  const isAdmin = userRole === 'admin';
+
+  // Check if current user is the post author
+  const isPostAuthor = user && post?.author?.id === user.id;
+
+  // Check if user can edit/delete the post
+  const canEditPost = isAdmin || isPostAuthor;
+
+  // Check if user can delete a specific comment
+  const canDeleteComment = (comment: ReviewWithUser) => {
+    if (!user) return false;
+    if (isAdmin) return true;
+    return comment.user_id === user.id;
+  };
 
   const handleReportComment = (commentId: string) => {
     setReportTargetId(commentId);
+    setReportTargetType('review');
     setReportDialogOpen(true);
+  };
+
+  const handleReportPost = () => {
+    if (!post) return;
+    setReportTargetId(post.id);
+    setReportTargetType('content');
+    setReportDialogOpen(true);
+  };
+
+  const handleDeletePost = async () => {
+    if (!post || !user || deletingPost) return;
+
+    const confirmMessage = language === 'ko'
+      ? '정말로 이 게시글을 삭제하시겠습니까?'
+      : 'Are you sure you want to delete this post?';
+
+    if (!confirm(confirmMessage)) return;
+
+    setDeletingPost(true);
+    try {
+      const success = await deletePost(post.id, user.id, isAdmin);
+      if (success) {
+        router.push('/board');
+      } else {
+        alert(language === 'ko' ? '게시글 삭제에 실패했습니다.' : 'Failed to delete post.');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert(language === 'ko' ? '게시글 삭제 중 오류가 발생했습니다.' : 'An error occurred while deleting the post.');
+    } finally {
+      setDeletingPost(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user || deletingCommentId) return;
+
+    const confirmMessage = language === 'ko'
+      ? '정말로 이 댓글을 삭제하시겠습니까?'
+      : 'Are you sure you want to delete this comment?';
+
+    if (!confirm(confirmMessage)) return;
+
+    setDeletingCommentId(commentId);
+    try {
+      const success = await deletePostComment(commentId);
+      if (success) {
+        setComments(prev => prev.filter(c => c.id !== commentId));
+      } else {
+        alert(language === 'ko' ? '댓글 삭제에 실패했습니다.' : 'Failed to delete comment.');
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert(language === 'ko' ? '댓글 삭제 중 오류가 발생했습니다.' : 'An error occurred while deleting the comment.');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
+
+  const handleReplyClick = (commentId: string) => {
+    if (replyingToCommentId === commentId) {
+      // Toggle off
+      setReplyingToCommentId(null);
+      setReplyText('');
+    } else {
+      // Toggle on
+      setReplyingToCommentId(commentId);
+      setReplyText('');
+    }
+  };
+
+  const handleSubmitReply = async (commentId: string) => {
+    if (!replyText.trim() || !user || submittingReply) return;
+
+    setSubmittingReply(true);
+    try {
+      const result = await addReply(user.id, commentId, replyText.trim());
+      if (result) {
+        // Refetch comments to get the updated data
+        const updatedComments = await getPostComments(postId);
+        setComments(updatedComments);
+        setReplyText('');
+        setReplyingToCommentId(null);
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      alert(language === 'ko' ? '답글 등록에 실패했습니다.' : 'Failed to add reply.');
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    if (!user || deletingReplyId) return;
+
+    const confirmMessage = language === 'ko'
+      ? '정말로 이 답글을 삭제하시겠습니까?'
+      : 'Are you sure you want to delete this reply?';
+
+    if (!confirm(confirmMessage)) return;
+
+    setDeletingReplyId(replyId);
+    try {
+      const success = await deleteReply(replyId);
+      if (success) {
+        // Refetch comments to get the updated data
+        const updatedComments = await getPostComments(postId);
+        setComments(updatedComments);
+      } else {
+        alert(language === 'ko' ? '답글 삭제에 실패했습니다.' : 'Failed to delete reply.');
+      }
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+      alert(language === 'ko' ? '답글 삭제 중 오류가 발생했습니다.' : 'An error occurred while deleting the reply.');
+    } finally {
+      setDeletingReplyId(null);
+    }
+  };
+
+  // Check if user can delete a specific reply
+  const canDeleteReply = (reply: { user_id: string }) => {
+    if (!user) return false;
+    if (isAdmin) return true;
+    return reply.user_id === user.id;
   };
 
   const handleReportSubmit = (reason: string, detail?: string) => {
@@ -183,33 +450,47 @@ export default function PostDetailPage() {
     // Show success feedback (could add a snackbar here)
   };
 
-  const handleVote = (type: 'up' | 'down') => {
-    if (!post) return;
+  const handleVote = async (type: 'up' | 'down') => {
+    if (!post || !user) {
+      alert(language === 'ko' ? '로그인이 필요합니다.' : 'Please sign in to vote.');
+      return;
+    }
 
-    if (userVote === type) {
-      setUserVote(null);
-    } else {
-      setUserVote(type);
+    try {
+      const { votePost } = await import('@/services/supabase');
+      const result = await votePost(user.id, post.id, type);
+
+      if (result.success) {
+        // Update local state based on the result
+        if (result.action === 'removed') {
+          setUserVote(null);
+        } else {
+          setUserVote(type);
+        }
+      }
+    } catch (error) {
+      console.error('Error voting:', error);
     }
   };
 
-  const handleSubmitComment = () => {
-    if (!newComment.trim() || !user) return;
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !user || submittingComment) return;
 
-    const newCommentObj: Comment = {
-      id: `comment-new-${Date.now()}`,
-      author: {
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        avatar: user.user_metadata?.avatar_url,
-      },
-      content: newComment,
-      createdAt: new Date(),
-      upvotes: 0,
-    };
-
-    setComments([newCommentObj, ...comments]);
-    setNewComment('');
-    setCommentPage(1); // Go to first page to see new comment
+    setSubmittingComment(true);
+    try {
+      const result = await addPostComment(user.id, postId, newComment.trim());
+      if (result) {
+        // Refetch comments to get the full data with user info
+        const updatedComments = await getPostComments(postId);
+        setComments(updatedComments);
+        setNewComment('');
+        setCommentPage(1); // Go to first page to see new comment
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
   const score = useMemo(() => {
@@ -334,12 +615,31 @@ export default function PostDetailPage() {
 
             {/* Author Info */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                component={post.author.id ? Link : 'div'}
+                href={post.author.id ? `/profile/${post.author.id}` : undefined}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  ...(post.author.id && {
+                    cursor: 'pointer',
+                    '&:hover': {
+                      '& .author-name': {
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                      },
+                    },
+                  }),
+                }}
+              >
                 <Avatar src={post.author.avatar} sx={{ width: 40, height: 40 }}>
                   {post.author.name.charAt(0)}
                 </Avatar>
                 <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  <Typography variant="subtitle2" className="author-name" sx={{ fontWeight: 600 }}>
                     {post.author.name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -347,9 +647,37 @@ export default function PostDetailPage() {
                   </Typography>
                 </Box>
               </Box>
-              <IconButton size="small">
-                <MoreIcon />
-              </IconButton>
+              {canEditPost && (
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => router.push(`/board/write?edit=${post.id}`)}
+                    sx={{
+                      color: 'text.secondary',
+                      fontSize: '0.8rem',
+                      minWidth: 'auto',
+                      '&:hover': { color: 'primary.main' },
+                    }}
+                  >
+                    {language === 'ko' ? '수정' : 'Edit'}
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={deletingPost ? <CircularProgress size={14} /> : <DeleteIcon sx={{ fontSize: 16 }} />}
+                    onClick={handleDeletePost}
+                    disabled={deletingPost}
+                    sx={{
+                      color: 'error.main',
+                      fontSize: '0.8rem',
+                      minWidth: 'auto',
+                      '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.08)' },
+                    }}
+                  >
+                    {language === 'ko' ? '삭제' : 'Delete'}
+                  </Button>
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -453,13 +781,20 @@ export default function PostDetailPage() {
               </Button>
               <IconButton
                 size="small"
-                onClick={() => setIsBookmarked(!isBookmarked)}
+                onClick={handleToggleBookmark}
                 sx={{ color: isBookmarked ? theme.palette.primary.main : 'text.secondary' }}
               >
                 {isBookmarked ? <BookmarkFilledIcon /> : <BookmarkIcon />}
               </IconButton>
               <IconButton size="small" sx={{ color: 'text.secondary' }}>
                 <ShareIcon />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={handleReportPost}
+                sx={{ color: 'text.secondary' }}
+              >
+                <FlagIcon />
               </IconButton>
             </Box>
           </Box>
@@ -502,14 +837,16 @@ export default function PostDetailPage() {
                       variant="contained"
                       size="small"
                       onClick={handleSubmitComment}
-                      disabled={!newComment.trim()}
+                      disabled={!newComment.trim() || submittingComment}
                       sx={{
                         bgcolor: '#ff6b35',
                         '&:hover': { bgcolor: '#e55a2b' },
                         '&:disabled': { bgcolor: theme.palette.action.disabledBackground },
                       }}
                     >
-                      {language === 'ko' ? '댓글 등록' : 'Post Comment'}
+                      {submittingComment
+                        ? (language === 'ko' ? '등록 중...' : 'Posting...')
+                        : (language === 'ko' ? '댓글 등록' : 'Post Comment')}
                     </Button>
                   </Box>
                 </Box>
@@ -605,16 +942,35 @@ export default function PostDetailPage() {
                       }}
                     >
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                        <Avatar src={comment.author.avatar} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
-                          {comment.author.name.charAt(0)}
-                        </Avatar>
+                        <Box
+                          component={comment.user?.id ? Link : 'div'}
+                          href={comment.user?.id ? `/profile/${comment.user.id}` : undefined}
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            alignItems: 'flex-start',
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            ...(comment.user?.id && {
+                              cursor: 'pointer',
+                              '&:hover .comment-author-name': {
+                                color: 'primary.main',
+                                textDecoration: 'underline',
+                              },
+                            }),
+                          }}
+                        >
+                          <Avatar src={comment.user?.avatar_url || undefined} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                            {(comment.user?.nickname || comment.user?.email || '?').charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Typography variant="caption" className="comment-author-name" sx={{ fontWeight: 600, fontSize: '0.8rem', mt: 0.25 }}>
+                            {comment.user?.nickname || comment.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
+                          </Typography>
+                        </Box>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                              {comment.author.name}
-                            </Typography>
                             <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
-                              {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: ko })}
+                              {comment.created_at && formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: ko })}
                             </Typography>
                           </Box>
                           <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.4, my: 0.25, wordBreak: 'break-word' }}>
@@ -623,16 +979,32 @@ export default function PostDetailPage() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                             <Button
                               size="small"
-                              startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 12 }} />}
-                              sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                              startIcon={likedComments.has(comment.id) ? <ThumbUpIcon sx={{ fontSize: 12 }} /> : <ThumbUpOutlinedIcon sx={{ fontSize: 12 }} />}
+                              onClick={() => handleToggleCommentLike(comment.id)}
+                              sx={{
+                                color: likedComments.has(comment.id) ? '#ff6b35' : 'text.secondary',
+                                minWidth: 'auto',
+                                p: 0.25,
+                                fontSize: '0.7rem',
+                                minHeight: 'auto',
+                              }}
                             >
-                              {comment.upvotes > 0 && comment.upvotes}
+                              {language === 'ko' ? '좋아요' : 'Like'}
                             </Button>
                             <Button
                               size="small"
-                              sx={{ color: 'text.secondary', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                              onClick={() => user ? handleReplyClick(comment.id) : alert(language === 'ko' ? '로그인이 필요합니다.' : 'Please sign in.')}
+                              sx={{
+                                color: replyingToCommentId === comment.id ? '#ff6b35' : 'text.secondary',
+                                minWidth: 'auto',
+                                p: 0.25,
+                                fontSize: '0.7rem',
+                                minHeight: 'auto',
+                                fontWeight: replyingToCommentId === comment.id ? 600 : 400,
+                              }}
                             >
                               {language === 'ko' ? '답글' : 'Reply'}
+                              {comment.replies && comment.replies.length > 0 && ` (${comment.replies.length})`}
                             </Button>
                             <Button
                               size="small"
@@ -645,7 +1017,154 @@ export default function PostDetailPage() {
                             >
                               {language === 'ko' ? '신고' : 'Report'}
                             </Button>
+                            {canDeleteComment(comment) && (
+                              <Button
+                                size="small"
+                                startIcon={deletingCommentId === comment.id ? <CircularProgress size={10} /> : <DeleteIcon sx={{ fontSize: 10 }} />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteComment(comment.id);
+                                }}
+                                disabled={deletingCommentId === comment.id}
+                                sx={{ color: 'error.main', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                              >
+                                {language === 'ko' ? '삭제' : 'Delete'}
+                              </Button>
+                            )}
                           </Box>
+
+                          {/* Reply Input */}
+                          {replyingToCommentId === comment.id && user && (
+                            <Box
+                              sx={{
+                                mt: 1.5,
+                                p: 1.5,
+                                borderRadius: 1.5,
+                                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                border: `1px solid ${theme.palette.divider}`,
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
+                                  {user.email?.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ flex: 1 }}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    multiline
+                                    rows={2}
+                                    placeholder={language === 'ko' ? '답글을 입력하세요...' : 'Write a reply...'}
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    sx={{
+                                      '& .MuiOutlinedInput-root': {
+                                        borderRadius: 1,
+                                        fontSize: '0.85rem',
+                                        bgcolor: theme.palette.mode === 'dark' ? '#0d0d0d' : '#ffffff',
+                                      },
+                                    }}
+                                  />
+                                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                                    <Button
+                                      size="small"
+                                      onClick={() => {
+                                        setReplyingToCommentId(null);
+                                        setReplyText('');
+                                      }}
+                                      sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
+                                    >
+                                      {language === 'ko' ? '취소' : 'Cancel'}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      onClick={() => handleSubmitReply(comment.id)}
+                                      disabled={!replyText.trim() || submittingReply}
+                                      sx={{
+                                        fontSize: '0.75rem',
+                                        bgcolor: '#ff6b35',
+                                        '&:hover': { bgcolor: '#e55a2b' },
+                                      }}
+                                    >
+                                      {submittingReply
+                                        ? (language === 'ko' ? '등록 중...' : 'Posting...')
+                                        : (language === 'ko' ? '답글 등록' : 'Post Reply')}
+                                    </Button>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* Existing Replies */}
+                          {comment.replies && comment.replies.length > 0 && (
+                            <Box
+                              sx={{
+                                mt: 1.5,
+                                pl: 2,
+                                borderLeft: `2px solid ${theme.palette.divider}`,
+                              }}
+                            >
+                              {comment.replies.map((reply) => (
+                                <Box
+                                  key={reply.id}
+                                  sx={{
+                                    py: 1,
+                                    display: 'flex',
+                                    gap: 1,
+                                    alignItems: 'flex-start',
+                                  }}
+                                >
+                                  <Box
+                                    component={reply.user?.id ? Link : 'div'}
+                                    href={reply.user?.id ? `/profile/${reply.user.id}` : undefined}
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.5,
+                                      textDecoration: 'none',
+                                      color: 'inherit',
+                                      flexShrink: 0,
+                                      ...(reply.user?.id && {
+                                        cursor: 'pointer',
+                                        '&:hover .reply-author-name': {
+                                          color: 'primary.main',
+                                          textDecoration: 'underline',
+                                        },
+                                      }),
+                                    }}
+                                  >
+                                    <Avatar src={reply.user?.avatar_url || undefined} sx={{ width: 20, height: 20, fontSize: '0.65rem' }}>
+                                      {(reply.user?.nickname || reply.user?.email || '?').charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    <Typography variant="caption" className="reply-author-name" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                                      {reply.user?.nickname || reply.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                                      {reply.created_at && formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: ko })}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                      {reply.content}
+                                    </Typography>
+                                    {canDeleteReply(reply) && (
+                                      <Button
+                                        size="small"
+                                        startIcon={deletingReplyId === reply.id ? <CircularProgress size={8} /> : <DeleteIcon sx={{ fontSize: 10 }} />}
+                                        onClick={() => handleDeleteReply(reply.id)}
+                                        disabled={deletingReplyId === reply.id}
+                                        sx={{ color: 'error.main', minWidth: 'auto', p: 0.25, fontSize: '0.65rem', minHeight: 'auto', mt: 0.25 }}
+                                      >
+                                        {language === 'ko' ? '삭제' : 'Delete'}
+                                      </Button>
+                                    )}
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                     </Box>
@@ -728,7 +1247,8 @@ export default function PostDetailPage() {
         open={reportDialogOpen}
         onClose={() => setReportDialogOpen(false)}
         onSubmit={handleReportSubmit}
-        targetType="comment"
+        targetType={reportTargetType}
+        targetId={reportTargetId}
       />
 
       <Footer />
