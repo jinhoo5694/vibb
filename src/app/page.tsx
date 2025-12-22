@@ -25,9 +25,27 @@ import { InteractiveHeroBackground } from '@/components/InteractiveHeroBackgroun
 type TabType = 'communicate' | 'start' | 'share';
 
 const tabs = [
-  { id: 'communicate' as TabType, label: '소통해요', icon: <ForumIcon />, color: '#ff6b35' },
-  { id: 'start' as TabType, label: '시작해요', icon: <RocketIcon />, color: '#4CAF50' },
-  { id: 'share' as TabType, label: '나눠요', icon: <ShareIcon />, color: '#2196F3' },
+  {
+    id: 'communicate' as TabType,
+    label: '소통해요',
+    icon: <ForumIcon />,
+    color: '#ff6b35',
+    description: '바이브 코딩에 관심이 있으신가요?\n다른 빌더들과 자유롭게 소통해보세요.',
+  },
+  {
+    id: 'start' as TabType,
+    label: '시작해요',
+    icon: <RocketIcon />,
+    color: '#4CAF50',
+    description: '바이브 코딩 시작, ViBB에서 시작하세요.\n상세한 가이드와 최신 정보만 전달해 드립니다!',
+  },
+  {
+    id: 'share' as TabType,
+    label: '나눠요',
+    icon: <ShareIcon />,
+    color: '#2196F3',
+    description: '고수들이 사용하는 프롬프트, MCP, 스킬들, 최신 확장 기능들\nViBB에서 나누고 공유해요.',
+  },
 ];
 
 // Sample notices data
@@ -180,70 +198,6 @@ export default function Home() {
 
   const renderCommunicateContent = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Notices Section */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          borderRadius: 3,
-          border: `1px solid ${theme.palette.divider}`,
-          bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <AnnouncementIcon sx={{ color: '#ff6b35' }} />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            공지사항
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {notices.map((notice) => (
-            <Box
-              key={notice.id}
-              component={Link}
-              href={`/board/${notice.id}`}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                p: 2,
-                borderRadius: 2,
-                textDecoration: 'none',
-                color: 'text.primary',
-                bgcolor: theme.palette.mode === 'dark' ? '#252525' : '#f8f9fa',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? '#303030' : '#f0f0f0',
-                  transform: 'translateX(4px)',
-                },
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                {notice.isNew && (
-                  <Chip
-                    label="NEW"
-                    size="small"
-                    sx={{
-                      bgcolor: '#ff6b35',
-                      color: '#fff',
-                      fontWeight: 700,
-                      fontSize: '0.65rem',
-                      height: 20,
-                    }}
-                  />
-                )}
-                <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                  {notice.title}
-                </Typography>
-              </Box>
-              <Typography variant="caption" color="text.secondary">
-                {notice.date}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Paper>
-
       {/* Popular Posts Section */}
       <Paper
         elevation={0}
@@ -331,6 +285,70 @@ export default function Home() {
                 <Typography variant="caption">❤️ {post.likes}</Typography>
                 <Typography variant="caption">💬 {post.comments}</Typography>
               </Box>
+            </Box>
+          ))}
+        </Box>
+      </Paper>
+
+      {/* Notices Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 3,
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <AnnouncementIcon sx={{ color: '#ff6b35' }} />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            공지사항
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {notices.map((notice) => (
+            <Box
+              key={notice.id}
+              component={Link}
+              href={`/board/${notice.id}`}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 2,
+                borderRadius: 2,
+                textDecoration: 'none',
+                color: 'text.primary',
+                bgcolor: theme.palette.mode === 'dark' ? '#252525' : '#f8f9fa',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  bgcolor: theme.palette.mode === 'dark' ? '#303030' : '#f0f0f0',
+                  transform: 'translateX(4px)',
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                {notice.isNew && (
+                  <Chip
+                    label="NEW"
+                    size="small"
+                    sx={{
+                      bgcolor: '#ff6b35',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '0.65rem',
+                      height: 20,
+                    }}
+                  />
+                )}
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                  {notice.title}
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {notice.date}
+              </Typography>
             </Box>
           ))}
         </Box>
@@ -629,6 +647,18 @@ export default function Home() {
                     }}
                   >
                     {tab.label}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'text.secondary',
+                      textAlign: 'center',
+                      whiteSpace: 'pre-line',
+                      lineHeight: 1.5,
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    {tab.description}
                   </Typography>
                 </Paper>
               );
