@@ -17,10 +17,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CommentSectionProps {
-  skillId: string;
+  contentId: string;
 }
 
-export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
+export const CommentSection: React.FC<CommentSectionProps> = ({ contentId }) => {
   const { user, signInWithGoogle, signInWithGithub } = useAuth();
   const { t } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -33,7 +33,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await commentService.getCommentsBySkillId(skillId, user?.id);
+      const data = await commentService.getCommentsByContentId(contentId, user?.id);
       setComments(data);
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -45,14 +45,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
 
   useEffect(() => {
     loadComments();
-  }, [skillId, user?.id]);
+  }, [contentId, user?.id]);
 
   // Check if user has already commented
   useEffect(() => {
     const checkUserComment = async () => {
       if (user) {
         try {
-          const commented = await commentService.userHasCommented(skillId, user.id);
+          const commented = await commentService.userHasCommented(contentId, user.id);
           setHasCommented(commented);
         } catch (err) {
           console.error('Error checking user comment:', err);
@@ -63,12 +63,17 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
     };
 
     checkUserComment();
-  }, [skillId, user]);
+  }, [contentId, user]);
 
   // Subscribe to real-time updates
   useEffect(() => {
-    const channel = commentService.subscribeToComments(skillId, () => {
+    const channel = commentService.subscribeToComments(contentId, () => {
       // Reload all comments when any change occurs
+      loadComments();
+    });
+
+    const repliesChannel = commentService.subscribeToReplies(() => {
+      // Reload all comments when replies change
       loadComments();
     });
 
@@ -79,9 +84,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
 
     return () => {
       channel.unsubscribe();
+      repliesChannel.unsubscribe();
       likesChannel.unsubscribe();
     };
-  }, [skillId, user?.id]);
+  }, [contentId, user?.id]);
 
   // Add comment
   const handleAddComment = async (content: string, rating?: number | null) => {
@@ -89,13 +95,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
 
     try {
       await commentService.addComment({
-        skill_id: skillId,
+        content_id: contentId,
         user_id: user.id,
         content,
-        rating: rating || null,
-        user_email: user.email || undefined,
-        user_name: user.user_metadata?.full_name || null,
-        user_avatar: user.user_metadata?.avatar_url || null,
+        rating: rating || 1,
       });
       setHasCommented(true);
       await loadComments();
@@ -133,46 +136,22 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
     if (!user) return;
 
     try {
-      // Find the comment to check if user has already liked it
-      const findComment = (comments: Comment[], id: string): Comment | null => {
-        for (const comment of comments) {
-          if (comment.id === id) return comment;
-          if (comment.replies) {
-            const found = findComment(comment.replies, id);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const comment = findComment(comments, commentId);
-
-      if (comment?.user_has_liked) {
-        await commentService.unlikeComment(commentId, user.id);
-      } else {
-        await commentService.likeComment(commentId, user.id);
-      }
-
+      await commentService.toggleLike(commentId);
       await loadComments();
     } catch (err) {
-      console.error('Error liking comment:', err);
+      console.error('Error toggling like:', err);
     }
   };
 
   // Reply to comment
-  const handleReplyComment = async (parentId: string, content: string) => {
+  const handleReplyComment = async (reviewId: string, content: string) => {
     if (!user) return;
 
     try {
-      await commentService.addComment({
-        skill_id: skillId,
+      await commentService.addReply({
+        review_id: reviewId,
         user_id: user.id,
-        parent_id: parentId,
         content,
-        rating: null, // Replies don't have ratings
-        user_email: user.email || undefined,
-        user_name: user.user_metadata?.full_name || null,
-        user_avatar: user.user_metadata?.avatar_url || null,
       });
       await loadComments();
     } catch (err) {
@@ -184,7 +163,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ skillId }) => {
   // Count total comments including replies
   const countAllComments = (comments: Comment[]): number => {
     return comments.reduce((count, comment) => {
-      return count + 1 + (comment.replies ? countAllComments(comment.replies) : 0);
+      const replyCount = comment.replies ? comment.replies.length : 0;
+      return count + 1 + replyCount;
     }, 0);
   };
 

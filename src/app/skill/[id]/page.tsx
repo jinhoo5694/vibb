@@ -418,7 +418,7 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         </Paper>
 
         {/* Comments */}
-        <CommentSection skillId={skill.id} />
+        <CommentSection contentId={skill.id} />
       </Container>
 
       {/* Discover More */}

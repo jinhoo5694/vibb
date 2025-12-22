@@ -1,6 +1,8 @@
 import { supabase } from './client';
 import { Content, ContentWithRelations, Profile, Tag, Review, ReviewWithUser, ReviewReply, ReviewReplyWithUser } from '@/types/database';
 import { Post, PostCategory, MainCategory, SubCategoryTag } from '@/types/post';
+import { isDebugMode } from '@/lib/debug';
+import { samplePosts } from '@/data/posts';
 
 // Map PostCategory to ContentType
 const categoryToContentType: Record<PostCategory, string> = {
@@ -46,6 +48,63 @@ function contentToPost(content: ContentWithRelations): Post {
   };
 }
 
+// Helper function to filter and sort sample posts
+function filterSamplePosts(
+  contentType: string | undefined,
+  sortBy: 'hot' | 'new' | 'top',
+  limit: number,
+  offset: number
+): Post[] {
+  let filtered = [...samplePosts];
+
+  // Filter by content type if specified
+  if (contentType && contentType !== 'all') {
+    const typeToCategory: Record<string, PostCategory> = {
+      'skill': '스킬',
+      'mcp': 'MCP',
+      'prompt': '프롬프트',
+      'ai_tool': 'AI 코딩 툴',
+      'post': '커뮤니티',
+    };
+    const category = typeToCategory[contentType];
+    if (category) {
+      filtered = filtered.filter(p => p.category === category || (contentType === 'post' && (p.category === '커뮤니티' || p.category === '질문')));
+    }
+  }
+
+  // Sort
+  const now = Date.now();
+  switch (sortBy) {
+    case 'hot':
+      filtered.sort((a, b) => {
+        const hoursA = (now - a.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+        const hoursB = (now - b.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+        const scoreA = (a.upvotes - a.downvotes) / Math.pow(hoursA, 1.5);
+        const scoreB = (b.upvotes - b.downvotes) / Math.pow(hoursB, 1.5);
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return scoreB - scoreA;
+      });
+      break;
+    case 'new':
+      filtered.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+      break;
+    case 'top':
+      filtered.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes);
+      });
+      break;
+  }
+
+  return filtered.slice(offset, offset + limit);
+}
+
 // Fetch posts by content type
 export async function getPosts(
   contentType?: string,
@@ -56,6 +115,11 @@ export async function getPosts(
   }
 ): Promise<Post[]> {
   const { limit = 20, offset = 0, sortBy = 'hot' } = options || {};
+
+  // In debug mode, return sample posts
+  if (isDebugMode()) {
+    return filterSamplePosts(contentType, sortBy, limit, offset);
+  }
 
   let query = supabase
     .from('contents')
@@ -264,6 +328,12 @@ export async function votePost(
 
 // Get post by ID
 export async function getPostById(postId: string): Promise<Post | null> {
+  // In debug mode, return from sample posts
+  if (isDebugMode()) {
+    const post = samplePosts.find(p => p.id === postId);
+    return post || null;
+  }
+
   const { data: content, error } = await supabase
     .from('contents')
     .select(`
@@ -385,7 +455,7 @@ export async function addPostComment(
       user_id: userId,
       content_id: postId,
       content,
-      rating: 0, // Posts don't have ratings, but field is required
+      rating: 1, // Default rating (required field, minimum 1)
     })
     .select()
     .single();
@@ -477,7 +547,124 @@ export async function hasUserLikedReview(userId: string, reviewId: string): Prom
     .select('*')
     .eq('user_id', userId)
     .eq('review_id', reviewId)
-    .single();
+    .maybeSingle();
 
   return !!data;
+}
+
+// Search posts by tag name (for tool-related posts)
+export async function getPostsByTag(
+  tagName: string,
+  options?: {
+    limit?: number;
+    sortBy?: 'hot' | 'new' | 'top';
+  }
+): Promise<Post[]> {
+  const { limit = 4, sortBy = 'top' } = options || {};
+
+  // First, find the tag
+  const { data: tag } = await supabase
+    .from('tags')
+    .select('id')
+    .ilike('name', tagName)
+    .single();
+
+  if (!tag) {
+    return [];
+  }
+
+  // Get content IDs that have this tag
+  const { data: contentTags } = await supabase
+    .from('content_tags')
+    .select('content_id')
+    .eq('tag_id', tag.id);
+
+  if (!contentTags || contentTags.length === 0) {
+    return [];
+  }
+
+  const contentIds = contentTags.map(ct => ct.content_id);
+
+  // Fetch the contents
+  let query = supabase
+    .from('contents')
+    .select(`
+      *,
+      author:author_id (id, nickname, avatar_url, email),
+      content_tags (
+        tag_id,
+        tags:tag_id (id, name)
+      )
+    `)
+    .in('id', contentIds);
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'new':
+      query = query.order('created_at', { ascending: false });
+      break;
+    case 'top':
+      query = query.order('upvote_count', { ascending: false });
+      break;
+    case 'hot':
+    default:
+      query = query.order('created_at', { ascending: false });
+      break;
+  }
+
+  query = query.limit(limit);
+
+  const { data: contents, error } = await query;
+
+  if (error || !contents) {
+    console.error('Error fetching posts by tag:', error);
+    return [];
+  }
+
+  // Get reviews count for each content
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('content_id')
+    .in('content_id', contentIds);
+
+  const reviewsCountMap: Record<string, number> = {};
+  reviewsData?.forEach(review => {
+    reviewsCountMap[review.content_id] = (reviewsCountMap[review.content_id] || 0) + 1;
+  });
+
+  // Transform to ContentWithRelations
+  const postsWithRelations: ContentWithRelations[] = contents.map(content => {
+    const tags = content.content_tags
+      ?.map((ct: { tags: Tag | Tag[] | null }) => {
+        if (Array.isArray(ct.tags)) return ct.tags[0];
+        return ct.tags;
+      })
+      .filter((t: Tag | null): t is Tag => t !== null) || [];
+
+    return {
+      ...content,
+      author: content.author as Profile | null,
+      tags,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
+      reviews_count: reviewsCountMap[content.id] || 0,
+    };
+  });
+
+  // Convert to Post format
+  let posts = postsWithRelations.map(contentToPost);
+
+  // Apply hot sorting client-side if needed
+  if (sortBy === 'hot') {
+    const now = Date.now();
+    posts = posts.sort((a, b) => {
+      const hoursA = (now - a.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const hoursB = (now - b.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const scoreA = (a.upvotes - a.downvotes) / Math.pow(hoursA, 1.5);
+      const scoreB = (b.upvotes - b.downvotes) / Math.pow(hoursB, 1.5);
+      return scoreB - scoreA;
+    });
+  }
+
+  return posts;
 }

@@ -146,41 +146,32 @@ export async function incrementViewCount(newsId: string): Promise<void> {
 export async function isBookmarked(userId: string, newsId: string): Promise<boolean> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('bookmarks')
     .select('user_id')
     .eq('user_id', userId)
     .eq('content_id', newsId)
-    .single();
-
-  if (error) {
-    return false;
-  }
+    .maybeSingle();
 
   return !!data;
 }
 
-// Toggle bookmark
-export async function toggleBookmark(userId: string, newsId: string): Promise<boolean> {
+// Toggle bookmark using RPC
+export async function toggleBookmark(newsId: string): Promise<{ action: 'added' | 'removed' }> {
   const supabase = createClient();
 
-  const bookmarked = await isBookmarked(userId, newsId);
+  const { data, error } = await supabase.rpc('toggle_bookmark', {
+    target_content_id: newsId,
+  });
 
-  if (bookmarked) {
-    // Remove bookmark
-    await supabase
-      .from('bookmarks')
-      .delete()
-      .eq('user_id', userId)
-      .eq('content_id', newsId);
-    return false;
-  } else {
-    // Add bookmark
-    await supabase
-      .from('bookmarks')
-      .insert({ user_id: userId, content_id: newsId });
-    return true;
+  if (error) {
+    console.error('Error toggling bookmark:', error);
+    throw error;
   }
+
+  return {
+    action: data?.action || 'added',
+  };
 }
 
 // Get user's bookmarked news IDs

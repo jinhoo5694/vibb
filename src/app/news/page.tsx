@@ -51,8 +51,9 @@ import {
   toggleBookmark,
   SortOption,
 } from '@/services/newsService';
+import { isDebugMode } from '@/lib/debug';
 
-// Sample news data (fallback when database is empty)
+// Sample news data (used only in debug mode)
 const sampleNews: NewsItem[] = [
   {
     id: '1',
@@ -332,31 +333,35 @@ export default function NewsPage() {
 
   const categories: (NewsCategory | 'all')[] = ['all', 'AI', '개발', '스타트업', '트렌드', '튜토리얼'];
 
-  // Fetch news from database
+  // Fetch news from database or use sample data based on debug mode
   useEffect(() => {
     async function fetchNews() {
       setLoading(true);
+
+      // In debug mode, always use sample data
+      if (isDebugMode()) {
+        setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
+        setPopularNews(getSamplePopularNews());
+        setUsingSampleData(true);
+        setLoading(false);
+        return;
+      }
+
+      // In production mode, always fetch from server
       try {
         const [fetchedNews, fetchedPopular] = await Promise.all([
           getNews({ sortBy, category: selectedCategory, searchQuery }),
           getPopularNews(5),
         ]);
 
-        if (fetchedNews.length > 0) {
-          setNews(fetchedNews);
-          setPopularNews(fetchedPopular.length > 0 ? fetchedPopular : getSamplePopularNews());
-          setUsingSampleData(false);
-        } else {
-          // Fall back to sample data
-          setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
-          setPopularNews(getSamplePopularNews());
-          setUsingSampleData(true);
-        }
+        setNews(fetchedNews);
+        setPopularNews(fetchedPopular);
+        setUsingSampleData(false);
       } catch (error) {
         console.error('Error fetching news:', error);
-        setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
-        setPopularNews(getSamplePopularNews());
-        setUsingSampleData(true);
+        setNews([]);
+        setPopularNews([]);
+        setUsingSampleData(false);
       } finally {
         setLoading(false);
       }
@@ -433,10 +438,10 @@ export default function NewsPage() {
     }
 
     try {
-      const isNowBookmarked = await toggleBookmark(user.id, id);
+      const result = await toggleBookmark(id);
       setBookmarkedIds((prev) => {
         const newSet = new Set(prev);
-        if (isNowBookmarked) {
+        if (result.action === 'added') {
           newSet.add(id);
         } else {
           newSet.delete(id);
@@ -624,12 +629,12 @@ export default function NewsPage() {
           </Box>
         </Box>
 
-        {/* Sample data notice */}
+        {/* Debug mode notice */}
         {usingSampleData && !loading && (
-          <Alert severity="info" sx={{ mb: 3 }}>
+          <Alert severity="warning" sx={{ mb: 3 }}>
             {language === 'ko'
-              ? '현재 샘플 데이터를 표시하고 있습니다. 실제 뉴스가 추가되면 자동으로 업데이트됩니다.'
-              : 'Showing sample data. Will be automatically updated when real news is added.'}
+              ? '🔧 디버그 모드: 샘플 데이터를 표시하고 있습니다. 실제 데이터를 보려면 NEXT_PUBLIC_DEBUG_MODE=false로 설정하세요.'
+              : '🔧 Debug Mode: Showing sample data. Set NEXT_PUBLIC_DEBUG_MODE=false for real data.'}
           </Alert>
         )}
 
