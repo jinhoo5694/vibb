@@ -15,7 +15,8 @@
       "Bash(git remote add:*)",
       "Bash(ls:*)",
       "Bash(mkdir:*)",
-      "WebFetch(domain:app.affine.pro)"
+      "WebFetch(domain:app.affine.pro)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

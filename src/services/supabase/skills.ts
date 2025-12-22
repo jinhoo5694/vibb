@@ -6,6 +6,7 @@ import {
   Profile,
   Review,
   ReviewWithUser,
+  ReviewReplyWithUser,
   SkillWithCategory,
   Category,
   License,
@@ -14,6 +15,7 @@ import {
   contentToLicense,
   contentToLegacyContents,
 } from '@/types/database';
+import { isDebugMode } from '@/lib/debug';
 
 // ============================================
 // Content (Skills) Functions
@@ -80,6 +82,11 @@ export async function searchSkills(query: string, language?: 'ko' | 'en'): Promi
 
 // Fetch all skills (contents with type='skill')
 export async function getSkills(): Promise<SkillWithCategory[]> {
+  // In debug mode, always return mock data
+  if (isDebugMode()) {
+    return getMockSkills();
+  }
+
   const { data: contents, error } = await supabase
     .from('contents')
     .select(`
@@ -94,11 +101,11 @@ export async function getSkills(): Promise<SkillWithCategory[]> {
 
   if (error) {
     console.error('Error fetching skills:', error);
-    return getMockSkills();
+    return [];
   }
 
   if (!contents || contents.length === 0) {
-    return getMockSkills();
+    return [];
   }
 
   // Get reviews count for each content
@@ -137,6 +144,12 @@ export async function getSkills(): Promise<SkillWithCategory[]> {
 
 // Fetch skill by ID
 export async function getSkillById(skillId: string): Promise<SkillWithCategory | null> {
+  // In debug mode, return from mock data
+  if (isDebugMode()) {
+    const mockSkill = getMockSkills().find(s => s.id === skillId);
+    return mockSkill || null;
+  }
+
   const { data: content, error } = await supabase
     .from('contents')
     .select(`
@@ -152,9 +165,7 @@ export async function getSkillById(skillId: string): Promise<SkillWithCategory |
 
   if (error || !content) {
     console.error('Error fetching skill:', error);
-    // Try mock data
-    const mockSkill = getMockSkills().find(s => s.id === skillId);
-    return mockSkill || null;
+    return null;
   }
 
   // Get reviews count
@@ -249,6 +260,11 @@ export async function getSkillsByCategory(tagId: string): Promise<SkillWithCateg
 
 // Fetch all categories (tags)
 export async function getCategories(): Promise<Category[]> {
+  // In debug mode, return mock categories
+  if (isDebugMode()) {
+    return getMockCategories();
+  }
+
   const { data: tags, error } = await supabase
     .from('tags')
     .select('*')
@@ -256,7 +272,7 @@ export async function getCategories(): Promise<Category[]> {
 
   if (error || !tags || tags.length === 0) {
     console.error('Error fetching categories:', error);
-    return getMockCategories();
+    return [];
   }
 
   // Convert tags to legacy category format
@@ -274,6 +290,11 @@ export async function getCategories(): Promise<Category[]> {
 
 // Get skill contents (what_is, how_to_use, key_features from metadata)
 export async function getSkillContents(skillId: string): Promise<LegacyContent[]> {
+  // In debug mode, return mock skill contents
+  if (isDebugMode()) {
+    return getMockSkillContents(skillId);
+  }
+
   const { data: content, error } = await supabase
     .from('contents')
     .select('id, metadata, body')
@@ -282,11 +303,6 @@ export async function getSkillContents(skillId: string): Promise<LegacyContent[]
 
   if (error || !content) {
     console.error('Error fetching skill contents:', error);
-    // Try mock data
-    const mockSkill = getMockSkills().find(s => s.id === skillId);
-    if (mockSkill) {
-      return getMockSkillContents(skillId);
-    }
     return [];
   }
 
@@ -404,7 +420,7 @@ export async function getUserVote(userId: string, contentId: string): Promise<'u
     .select('vote_type')
     .eq('user_id', userId)
     .eq('content_id', contentId)
-    .single();
+    .maybeSingle();
 
   return data?.vote_type || null;
 }
@@ -425,7 +441,14 @@ export async function getSkillComments(skillId: string): Promise<ReviewWithUser[
     .select(`
       *,
       user:user_id (id, nickname, avatar_url, email),
-      reply:review_replies (id, content, created_at)
+      replies:review_replies (
+        id,
+        review_id,
+        user_id,
+        content,
+        created_at,
+        user:user_id (id, nickname, avatar_url, email)
+      )
     `)
     .eq('content_id', skillId)
     .order('created_at', { ascending: false });
@@ -438,7 +461,10 @@ export async function getSkillComments(skillId: string): Promise<ReviewWithUser[
   return (reviews || []).map(review => ({
     ...review,
     user: review.user as Profile | null,
-    reply: Array.isArray(review.reply) ? review.reply[0] : review.reply,
+    replies: (review.replies || []).map((reply: ReviewReplyWithUser & { user: Profile | null }) => ({
+      ...reply,
+      user: reply.user as Profile | null,
+    })),
   }));
 }
 
@@ -472,7 +498,7 @@ export async function deleteComment(reviewId: string): Promise<boolean> {
   await supabase
     .from('review_replies')
     .delete()
-    .eq('id', reviewId);
+    .eq('review_id', reviewId);
 
   const { error } = await supabase
     .from('reviews')
@@ -533,7 +559,7 @@ export async function hasUserBookmarked(userId: string, contentId: string): Prom
     .select('*')
     .eq('user_id', userId)
     .eq('content_id', contentId)
-    .single();
+    .maybeSingle();
 
   return !!data;
 }

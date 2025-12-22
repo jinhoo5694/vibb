@@ -93,8 +93,8 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
         type: targetType,
         target_id: targetId,
         reason: mapReasonToApi(selectedReason),
-        description: detail || undefined,
         reporter_id: user.id,
+        ...(detail && { description: detail }),
       };
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/send-report`, {

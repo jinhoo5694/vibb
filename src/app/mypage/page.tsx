@@ -43,7 +43,6 @@ import {
   Extension as McpIcon,
   TextSnippet as PromptIcon,
   Newspaper as NewsIcon,
-  Block as BlockIcon,
   HourglassEmpty as PendingIcon,
   Warning as WarningIcon,
   PhotoCamera as PhotoCameraIcon,
@@ -76,9 +75,7 @@ interface UserProfile {
   nickname: string;
   avatar_url: string | null;
   bio: string | null;
-  role: string;
-  is_banned: boolean;
-  ban_reason: string | null;
+  role: 'user' | 'admin' | 'withdrawal';
   created_at: string;
   deletion_scheduled_at: string | null;
 }
@@ -95,15 +92,20 @@ interface UserComment {
 interface SavedContent {
   id: string;
   title: string;
-  type: string;
-  created_at: string;
+  type: 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post' | 'news';
+  status: 'draft' | 'pending' | 'published' | 'hidden' | 'reported';
+  view_count: number;
+  upvote_count: number;
+  bookmarked_at: string;
 }
 
 interface UserContribution {
   id: string;
   title: string;
-  type: string;
-  status: 'published' | 'pending' | 'blocked';
+  type: 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post' | 'news';
+  status: 'draft' | 'pending' | 'published' | 'hidden' | 'reported';
+  view_count: number;
+  upvote_count: number;
   created_at: string;
 }
 
@@ -160,7 +162,6 @@ export default function MyPage() {
           avatar_url: user.user_metadata?.avatar_url || null,
           email: user.email,
           role: 'user',
-          is_banned: false,
         };
 
         const { data: createdProfile } = await supabase
@@ -205,39 +206,38 @@ export default function MyPage() {
         })));
       }
 
-      // Fetch bookmarked contents
-      const { data: bookmarksData } = await supabase
-        .from('bookmarks')
-        .select(`
-          content_id,
-          created_at,
-          contents:content_id (id, title, type)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Fetch bookmarked contents using RPC
+      const { data: bookmarksData, error: bookmarksError } = await supabase.rpc('get_my_bookmarks', {
+        sort_by: 'latest',
+        page_size: 50,
+      });
 
-      if (bookmarksData) {
+      if (!bookmarksError && bookmarksData) {
         setSavedContents(bookmarksData.map((b: Record<string, unknown>) => ({
-          id: (b.contents as Record<string, unknown>)?.id as string,
-          title: (b.contents as Record<string, unknown>)?.title as string || 'Unknown',
-          type: (b.contents as Record<string, unknown>)?.type as string || 'skill',
-          created_at: b.created_at as string,
-        })).filter((c: SavedContent) => c.id));
+          id: b.id as string,
+          title: b.title as string || 'Unknown',
+          type: b.type as SavedContent['type'],
+          status: b.status as SavedContent['status'],
+          view_count: b.view_count as number || 0,
+          upvote_count: b.upvote_count as number || 0,
+          bookmarked_at: b.bookmarked_at as string,
+        })));
       }
 
-      // Fetch user's contributions (created content)
-      const { data: contributionsData } = await supabase
-        .from('contents')
-        .select('id, title, type, created_at, metadata')
-        .eq('author_id', user.id)
-        .order('created_at', { ascending: false });
+      // Fetch user's contributions using RPC
+      const { data: contributionsData, error: contributionsError } = await supabase.rpc('get_my_contents', {
+        sort_by: 'latest',
+        page_size: 50,
+      });
 
-      if (contributionsData) {
+      if (!contributionsError && contributionsData) {
         setContributions(contributionsData.map((c: Record<string, unknown>) => ({
           id: c.id as string,
           title: c.title as string,
-          type: c.type as string,
-          status: (c.metadata as Record<string, unknown>)?.status as 'published' | 'pending' | 'blocked' || 'published',
+          type: c.type as UserContribution['type'],
+          status: c.status as UserContribution['status'],
+          view_count: c.view_count as number || 0,
+          upvote_count: c.upvote_count as number || 0,
           created_at: c.created_at as string,
         })));
       }
@@ -400,15 +400,6 @@ export default function MyPage() {
         >
           {language === 'ko' ? '마이페이지' : 'My Page'}
         </Typography>
-
-        {/* Ban Alert */}
-        {profile?.is_banned && (
-          <Alert severity="error" sx={{ mb: 3 }} icon={<BlockIcon />}>
-            {language === 'ko'
-              ? `계정이 정지되었습니다. 사유: ${profile.ban_reason || '관리자에게 문의하세요'}`
-              : `Your account has been suspended. Reason: ${profile.ban_reason || 'Contact administrator'}`}
-          </Alert>
-        )}
 
         {/* Deletion Warning */}
         {daysUntilDeletion !== null && (
@@ -693,7 +684,7 @@ export default function MyPage() {
                               sx={{ height: 20, fontSize: '0.7rem' }}
                             />
                             <Typography variant="caption" color="text.disabled">
-                              {new Date(content.created_at).toLocaleDateString()}
+                              {new Date(content.bookmarked_at).toLocaleDateString()}
                             </Typography>
                           </Box>
                         }
@@ -751,13 +742,27 @@ export default function MyPage() {
                                 sx={{ height: 20, fontSize: '0.7rem' }}
                               />
                             )}
-                            {contribution.status === 'blocked' && (
+                            {contribution.status === 'reported' && (
                               <Chip
-                                icon={<BlockIcon sx={{ fontSize: 14 }} />}
-                                label={language === 'ko' ? '차단됨' : 'Blocked'}
+                                icon={<WarningIcon sx={{ fontSize: 14 }} />}
+                                label={language === 'ko' ? '신고됨' : 'Reported'}
                                 size="small"
                                 color="error"
                                 sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            )}
+                            {contribution.status === 'hidden' && (
+                              <Chip
+                                label={language === 'ko' ? '숨김' : 'Hidden'}
+                                size="small"
+                                sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.300' }}
+                              />
+                            )}
+                            {contribution.status === 'draft' && (
+                              <Chip
+                                label={language === 'ko' ? '임시저장' : 'Draft'}
+                                size="small"
+                                sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.200' }}
                               />
                             )}
                             <Typography variant="caption" color="text.disabled">

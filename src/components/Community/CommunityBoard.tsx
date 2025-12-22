@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import { PostListTable } from '@/components/Community/PostListTable';
 import { getBoardPosts } from '@/services/supabase';
+import { isDebugMode } from '@/lib/debug';
 import {
   Post,
   SortOption,
@@ -237,7 +238,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   // Only show sub-category filter for general board or when there are multiple categories
   const showSubCategories = showSubCategoriesProp && (isGeneralBoard || categories.length > 1);
 
-  // Fetch posts from database
+  // Fetch posts from database or sample data based on debug mode
   useEffect(() => {
     async function fetchPosts() {
       setLoading(true);
@@ -250,7 +251,8 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
         });
 
         setPosts(fetchedPosts);
-        setUsingSampleData(false);
+        // Set usingSampleData based on debug mode
+        setUsingSampleData(isDebugMode());
       } catch (err) {
         console.error('Error fetching posts:', err);
         setError(language === 'ko' ? '게시글을 불러오는 데 실패했습니다' : 'Failed to load posts');
@@ -819,12 +821,12 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
         </Box>
       </Box>
 
-      {/* Sample data notice */}
+      {/* Debug mode notice */}
       {usingSampleData && !loading && (
-        <Alert severity="info" sx={{ mb: 3 }}>
+        <Alert severity="warning" sx={{ mb: 3 }}>
           {language === 'ko'
-            ? '현재 샘플 데이터를 표시하고 있습니다. 실제 게시글이 추가되면 자동으로 업데이트됩니다.'
-            : 'Showing sample data. Will be automatically updated when real posts are added.'}
+            ? '🔧 디버그 모드: 샘플 데이터를 표시하고 있습니다. 실제 데이터를 보려면 NEXT_PUBLIC_DEBUG_MODE=false로 설정하세요.'
+            : '🔧 Debug Mode: Showing sample data. Set NEXT_PUBLIC_DEBUG_MODE=false for real data.'}
         </Alert>
       )}
 

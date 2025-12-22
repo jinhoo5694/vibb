@@ -95,3 +95,6 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key
 - `NEXT_PUBLIC_GITHUB_TOKEN` - GitHub token for API access
+
+Optional:
+- `NEXT_PUBLIC_DEBUG_MODE` - Set to `true` to use sample/mock data instead of real server data. Set to `false` (or omit) for production with real data. When enabled, a warning banner will be shown on pages using sample data.
