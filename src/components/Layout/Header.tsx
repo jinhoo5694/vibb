@@ -186,7 +186,7 @@ export const Header: React.FC = () => {
   const navigationItems = [
     { label: '홈', labelEn: 'Home', href: '/', icon: <HomeIcon /> },
     { label: '커뮤니티', labelEn: 'Community', href: '/board', icon: <ForumIcon /> },
-    { label: 'AI 코딩 툴', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon /> },
+    { label: 'AI 코딩 도구', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon /> },
     { label: '프롬프트', labelEn: 'Prompt', href: '/prompt', icon: <ExploreIcon /> },
     { label: 'AI 확장', labelEn: 'AI Extension', href: '/ai-extension', icon: <ExtensionIcon />, hasSubmenu: true, activePaths: ['/skills', '/mcp'] },
     { label: '뉴스', labelEn: 'News', href: '/news', icon: <ExploreIcon /> },

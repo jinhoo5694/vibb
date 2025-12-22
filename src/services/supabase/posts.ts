@@ -481,3 +481,120 @@ export async function hasUserLikedReview(userId: string, reviewId: string): Prom
 
   return !!data;
 }
+
+// Search posts by tag name (for tool-related posts)
+export async function getPostsByTag(
+  tagName: string,
+  options?: {
+    limit?: number;
+    sortBy?: 'hot' | 'new' | 'top';
+  }
+): Promise<Post[]> {
+  const { limit = 4, sortBy = 'top' } = options || {};
+
+  // First, find the tag
+  const { data: tag } = await supabase
+    .from('tags')
+    .select('id')
+    .ilike('name', tagName)
+    .single();
+
+  if (!tag) {
+    return [];
+  }
+
+  // Get content IDs that have this tag
+  const { data: contentTags } = await supabase
+    .from('content_tags')
+    .select('content_id')
+    .eq('tag_id', tag.id);
+
+  if (!contentTags || contentTags.length === 0) {
+    return [];
+  }
+
+  const contentIds = contentTags.map(ct => ct.content_id);
+
+  // Fetch the contents
+  let query = supabase
+    .from('contents')
+    .select(`
+      *,
+      author:author_id (id, nickname, avatar_url, email),
+      content_tags (
+        tag_id,
+        tags:tag_id (id, name)
+      )
+    `)
+    .in('id', contentIds);
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'new':
+      query = query.order('created_at', { ascending: false });
+      break;
+    case 'top':
+      query = query.order('upvote_count', { ascending: false });
+      break;
+    case 'hot':
+    default:
+      query = query.order('created_at', { ascending: false });
+      break;
+  }
+
+  query = query.limit(limit);
+
+  const { data: contents, error } = await query;
+
+  if (error || !contents) {
+    console.error('Error fetching posts by tag:', error);
+    return [];
+  }
+
+  // Get reviews count for each content
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('content_id')
+    .in('content_id', contentIds);
+
+  const reviewsCountMap: Record<string, number> = {};
+  reviewsData?.forEach(review => {
+    reviewsCountMap[review.content_id] = (reviewsCountMap[review.content_id] || 0) + 1;
+  });
+
+  // Transform to ContentWithRelations
+  const postsWithRelations: ContentWithRelations[] = contents.map(content => {
+    const tags = content.content_tags
+      ?.map((ct: { tags: Tag | Tag[] | null }) => {
+        if (Array.isArray(ct.tags)) return ct.tags[0];
+        return ct.tags;
+      })
+      .filter((t: Tag | null): t is Tag => t !== null) || [];
+
+    return {
+      ...content,
+      author: content.author as Profile | null,
+      tags,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
+      reviews_count: reviewsCountMap[content.id] || 0,
+    };
+  });
+
+  // Convert to Post format
+  let posts = postsWithRelations.map(contentToPost);
+
+  // Apply hot sorting client-side if needed
+  if (sortBy === 'hot') {
+    const now = Date.now();
+    posts = posts.sort((a, b) => {
+      const hoursA = (now - a.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const hoursB = (now - b.createdAt.getTime()) / (1000 * 60 * 60) + 2;
+      const scoreA = (a.upvotes - a.downvotes) / Math.pow(hoursA, 1.5);
+      const scoreB = (b.upvotes - b.downvotes) / Math.pow(hoursB, 1.5);
+      return scoreB - scoreA;
+    });
+  }
+
+  return posts;
+}
