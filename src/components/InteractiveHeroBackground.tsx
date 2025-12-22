@@ -23,7 +23,7 @@ export const InteractiveHeroBackground = ({ isDarkMode }: InteractiveHeroBackgro
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef({ x: 0, y: 0, isActive: false });
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Brand color palette (orange to golden yellow)

@@ -16,7 +16,14 @@
       "Bash(ls:*)",
       "Bash(mkdir:*)",
       "WebFetch(domain:app.affine.pro)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
