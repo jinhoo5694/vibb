@@ -35,10 +35,9 @@ import {
   KeyboardArrowRight as ArrowIcon,
   Search as SearchIcon,
   Close as CloseIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { PostListTable } from '@/components/Community/PostListTable';
+import { TagSelector } from '@/components/Community/TagSelector';
 import { getBoardPosts } from '@/services/supabase';
 import { isDebugMode } from '@/lib/debug';
 import {
@@ -47,10 +46,7 @@ import {
   PostCategory,
   categoryColors,
   categoryIcons,
-  MainCategory,
   SubCategoryTag,
-  mainCategoryConfig,
-  subCategoryColors,
 } from '@/types/post';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -217,10 +213,8 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const postsPerPage = 20;
 
-  // New hierarchical filter states - now supports multi-select
-  const [selectedMainCategories, setSelectedMainCategories] = useState<MainCategory[]>([]);
-  const [selectedSubTags, setSelectedSubTags] = useState<SubCategoryTag[]>([]);
-  const [expandedMainCategory, setExpandedMainCategory] = useState<MainCategory | null>(null);
+  // Tag filter state
+  const [selectedTags, setSelectedTags] = useState<SubCategoryTag[]>([]);
 
   // For general board, show all posts
   // For category-specific boards, show only that category's posts
@@ -297,17 +291,10 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   const displayedPosts = useMemo(() => {
     let filtered = posts;
 
-    // Filter by selected main categories (multi-select)
-    if (selectedMainCategories.length > 0) {
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
       filtered = filtered.filter(post =>
-        post.mainCategory && selectedMainCategories.includes(post.mainCategory)
-      );
-    }
-
-    // Filter by selected sub-tags (multi-select)
-    if (selectedSubTags.length > 0) {
-      filtered = filtered.filter(post =>
-        post.subCategoryTag && selectedSubTags.includes(post.subCategoryTag)
+        post.subCategoryTag && selectedTags.includes(post.subCategoryTag)
       );
     }
 
@@ -337,7 +324,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
       default:
         return filtered;
     }
-  }, [posts, sortBy, selectedSubCategory, selectedMainCategories, selectedSubTags, searchQuery]);
+  }, [posts, sortBy, selectedSubCategory, selectedTags, searchQuery]);
 
   // Pagination logic
   const totalPages = Math.ceil(displayedPosts.length / postsPerPage);
@@ -349,83 +336,7 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
   // Reset page when filter/sort/search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, selectedSubCategory, selectedMainCategories, selectedSubTags, searchQuery]);
-
-  // Check if any filters are active
-  const hasActiveFilters = selectedMainCategories.length > 0 || selectedSubTags.length > 0;
-
-  // Reset all filters
-  const handleResetFilters = () => {
-    setSelectedMainCategories([]);
-    setSelectedSubTags([]);
-    setExpandedMainCategory(null);
-  };
-
-  // Handle main category click - expand/collapse AND auto-select 'all'
-  const handleMainCategoryClick = (category: MainCategory) => {
-    const isCurrentlyExpanded = expandedMainCategory === category;
-
-    if (isCurrentlyExpanded) {
-      // Collapsing: just close, don't change selection
-      setExpandedMainCategory(null);
-    } else {
-      // Expanding: open and auto-select 'all' for this category
-      setExpandedMainCategory(category);
-
-      // Auto-select 'all' for this category if not already selected
-      if (!selectedMainCategories.includes(category)) {
-        setSelectedMainCategories(prev => [...prev, category]);
-        // Clear any sub-tags from this category since we're selecting "all"
-        const categorySubTags = mainCategoryConfig[category].subCategories;
-        setSelectedSubTags(prev => prev.filter(t => !categorySubTags.includes(t)));
-      }
-    }
-  };
-
-  // Handle '전체' (All) button click within a main category - selects the main category
-  const handleSelectAllInCategory = (category: MainCategory) => {
-    setSelectedMainCategories(prev => {
-      if (prev.includes(category)) {
-        // Deselect: remove from array
-        return prev.filter(c => c !== category);
-      } else {
-        // Select: add to array
-        return [...prev, category];
-      }
-    });
-    // Also clear any sub-tags from this category since we're selecting "all"
-    const categorySubTags = mainCategoryConfig[category].subCategories;
-    setSelectedSubTags(prev => prev.filter(t => !categorySubTags.includes(t)));
-  };
-
-  // Handle sub-tag click - toggle selection (mutually exclusive with '전체')
-  const handleSubTagClick = (subTag: SubCategoryTag, mainCategory: MainCategory) => {
-    // When selecting a sub-tag, deselect '전체' for this category
-    setSelectedMainCategories(prev => prev.filter(c => c !== mainCategory));
-
-    setSelectedSubTags(prev => {
-      if (prev.includes(subTag)) {
-        // Deselect: remove from array
-        return prev.filter(t => t !== subTag);
-      } else {
-        // Select: add to array
-        return [...prev, subTag];
-      }
-    });
-  };
-
-  // Remove a specific main category filter
-  const handleRemoveMainCategory = (category: MainCategory) => {
-    setSelectedMainCategories(prev => prev.filter(c => c !== category));
-    // Also remove any sub-tags that belong to this category
-    const categorySubTags = mainCategoryConfig[category].subCategories;
-    setSelectedSubTags(prev => prev.filter(t => !categorySubTags.includes(t)));
-  };
-
-  // Remove a specific sub-tag filter
-  const handleRemoveSubTag = (subTag: SubCategoryTag) => {
-    setSelectedSubTags(prev => prev.filter(t => t !== subTag));
-  };
+  }, [sortBy, selectedSubCategory, selectedTags, searchQuery]);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
@@ -451,67 +362,19 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
     <Box sx={{ minHeight: '50vh' }}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 1,
-            background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body1" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Controls Bar - Search, Sort, Filter, Add */}
-      <Box
-        sx={{
-          mb: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-        }}
-      >
-        {/* Top Row: Search + Add Button */}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={language === 'ko' ? '검색...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography
+            variant="h4"
             sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 1.5,
-                bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? '#222' : '#fafafa',
-                },
-              },
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
             }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery && (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchQuery('')}>
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          >
+            {title}
+          </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -533,6 +396,53 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
             {language === 'ko' ? '글쓰기' : 'Write'}
           </Button>
         </Box>
+        {subtitle && (
+          <Typography variant="body1" color="text.secondary">
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Controls Bar - Search, Sort, Filter, Add */}
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}
+      >
+        {/* Search Bar */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder={language === 'ko' ? '검색...' : 'Search...'}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 1.5,
+              bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+              '&:hover': {
+                bgcolor: theme.palette.mode === 'dark' ? '#222' : '#fafafa',
+              },
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery && (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchQuery('')}>
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
         {/* Bottom Row: Sort + Categories */}
         <Box
@@ -587,235 +497,15 @@ export const CommunityBoard: React.FC<CommunityBoardProps> = ({
             </ToggleButtonGroup>
           </Box>
 
-          {/* Hierarchical Category Filter - Multi-select */}
+          {/* Tag Filter */}
           {showSubCategories && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%' }}>
-              {/* Filter Selection UI */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1,
-                  p: 1.5,
-                  borderRadius: 1.5,
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  border: `1px solid ${theme.palette.divider}`,
-                }}
-              >
-                {/* Main Categories - expand/collapse toggles */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem', minWidth: 35 }}>
-                    {language === 'ko' ? '필터' : 'Filter'}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {/* Main category chips - just toggles to expand sub-categories */}
-                    {(Object.keys(mainCategoryConfig) as MainCategory[]).map((mainCat) => {
-                      const config = mainCategoryConfig[mainCat];
-                      const isExpanded = expandedMainCategory === mainCat;
-                      const hasSelection = selectedMainCategories.includes(mainCat) ||
-                        selectedSubTags.some(tag => config.subCategories.includes(tag));
-
-                      return (
-                        <Chip
-                          key={mainCat}
-                          label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <span>{config.icon}</span>
-                              <span>{mainCat}</span>
-                              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 14, ml: 0.25 }} /> : <ExpandMoreIcon sx={{ fontSize: 14, ml: 0.25 }} />}
-                            </Box>
-                          }
-                          size="small"
-                          variant={isExpanded ? 'filled' : 'outlined'}
-                          onClick={() => handleMainCategoryClick(mainCat)}
-                          sx={{
-                            fontWeight: isExpanded || hasSelection ? 600 : 400,
-                            fontSize: '0.75rem',
-                            height: 26,
-                            bgcolor: isExpanded ? config.color : 'transparent',
-                            color: isExpanded ? '#fff' : hasSelection ? config.color : 'text.secondary',
-                            borderColor: isExpanded || hasSelection ? config.color : theme.palette.divider,
-                            '&:hover': {
-                              bgcolor: isExpanded ? config.color : `${config.color}20`,
-                              borderColor: config.color,
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                </Box>
-
-                {/* Sub-category tags (shown when main category is expanded) */}
-                {expandedMainCategory && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      flexWrap: 'wrap',
-                      pl: { xs: 0, sm: 5 },
-                      pt: 1,
-                      borderTop: `1px dashed ${theme.palette.divider}`,
-                    }}
-                  >
-                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', mr: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <span>{mainCategoryConfig[expandedMainCategory].icon}</span>
-                      <span>{expandedMainCategory}:</span>
-                    </Typography>
-                    {/* '전체' button to select entire main category */}
-                    <Chip
-                      label={language === 'ko' ? '전체' : 'All'}
-                      size="small"
-                      variant={selectedMainCategories.includes(expandedMainCategory) ? 'filled' : 'outlined'}
-                      onClick={() => handleSelectAllInCategory(expandedMainCategory)}
-                      sx={{
-                        fontWeight: selectedMainCategories.includes(expandedMainCategory) ? 600 : 400,
-                        fontSize: '0.7rem',
-                        height: 22,
-                        bgcolor: selectedMainCategories.includes(expandedMainCategory)
-                          ? mainCategoryConfig[expandedMainCategory].color
-                          : 'transparent',
-                        color: selectedMainCategories.includes(expandedMainCategory) ? '#fff' : 'text.secondary',
-                        borderColor: selectedMainCategories.includes(expandedMainCategory)
-                          ? mainCategoryConfig[expandedMainCategory].color
-                          : theme.palette.divider,
-                        '&:hover': {
-                          bgcolor: selectedMainCategories.includes(expandedMainCategory)
-                            ? mainCategoryConfig[expandedMainCategory].color
-                            : `${mainCategoryConfig[expandedMainCategory].color}20`,
-                          borderColor: mainCategoryConfig[expandedMainCategory].color,
-                        },
-                      }}
-                    />
-                    {/* Sub-category tags */}
-                    {mainCategoryConfig[expandedMainCategory].subCategories.map((subTag) => {
-                      const isSelected = selectedSubTags.includes(subTag);
-                      const color = subCategoryColors[subTag];
-
-                      return (
-                        <Chip
-                          key={subTag}
-                          label={subTag}
-                          size="small"
-                          variant={isSelected ? 'filled' : 'outlined'}
-                          onClick={() => handleSubTagClick(subTag, expandedMainCategory)}
-                          sx={{
-                            fontWeight: isSelected ? 600 : 400,
-                            fontSize: '0.7rem',
-                            height: 22,
-                            bgcolor: isSelected ? color : 'transparent',
-                            color: isSelected ? '#fff' : 'text.secondary',
-                            borderColor: isSelected ? color : theme.palette.divider,
-                            '&:hover': {
-                              bgcolor: isSelected ? color : `${color}20`,
-                              borderColor: color,
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-              </Box>
-
-              {/* Selected Filters Display - Separate section */}
-              {hasActiveFilters && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    flexWrap: 'wrap',
-                    p: 1.5,
-                    borderRadius: 1.5,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,107,53,0.1)' : 'rgba(255,107,53,0.05)',
-                    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,107,53,0.3)' : 'rgba(255,107,53,0.2)'}`,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#ff6b35', minWidth: 50 }}>
-                    {language === 'ko' ? '선택됨' : 'Selected'}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-                    {/* Selected main categories (전체) with remove button */}
-                    {selectedMainCategories.map((mainCat) => {
-                      const config = mainCategoryConfig[mainCat];
-                      return (
-                        <Chip
-                          key={`selected-${mainCat}`}
-                          label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <span>{config.icon}</span>
-                              <span>{mainCat}</span>
-                              <span style={{ opacity: 0.7, fontSize: '0.65rem' }}>({language === 'ko' ? '전체' : 'All'})</span>
-                            </Box>
-                          }
-                          size="small"
-                          onDelete={() => handleRemoveMainCategory(mainCat)}
-                          deleteIcon={<CloseIcon sx={{ fontSize: 14 }} />}
-                          sx={{
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            height: 26,
-                            bgcolor: config.color,
-                            color: '#fff',
-                            '& .MuiChip-deleteIcon': {
-                              color: 'rgba(255,255,255,0.7)',
-                              '&:hover': {
-                                color: '#fff',
-                              },
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                    {/* Selected sub-tags with remove button */}
-                    {selectedSubTags.map((subTag) => {
-                      const color = subCategoryColors[subTag];
-                      return (
-                        <Chip
-                          key={`selected-${subTag}`}
-                          label={subTag}
-                          size="small"
-                          onDelete={() => handleRemoveSubTag(subTag)}
-                          deleteIcon={<CloseIcon sx={{ fontSize: 14 }} />}
-                          sx={{
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                            height: 22,
-                            bgcolor: color,
-                            color: '#fff',
-                            '& .MuiChip-deleteIcon': {
-                              color: 'rgba(255,255,255,0.7)',
-                              '&:hover': {
-                                color: '#fff',
-                              },
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                  {/* Reset button */}
-                  <Chip
-                    label={language === 'ko' ? '초기화' : 'Reset'}
-                    size="small"
-                    onClick={handleResetFilters}
-                    variant="outlined"
-                    sx={{
-                      fontWeight: 500,
-                      fontSize: '0.7rem',
-                      height: 22,
-                      color: theme.palette.error.main,
-                      borderColor: theme.palette.error.main,
-                      '&:hover': {
-                        bgcolor: `${theme.palette.error.main}15`,
-                        borderColor: theme.palette.error.main,
-                      },
-                    }}
-                  />
-                </Box>
-              )}
+            <Box sx={{ width: '100%' }}>
+              <TagSelector
+                selectedTags={selectedTags}
+                onTagsChange={setSelectedTags}
+                showHeader={false}
+                compact
+              />
             </Box>
           )}
         </Box>
