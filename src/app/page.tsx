@@ -20,6 +20,7 @@ import {
   Build as ToolsIcon,
   ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
+import { InteractiveHeroBackground } from '@/components/InteractiveHeroBackground';
 
 type TabType = 'communicate' | 'start' | 'share';
 
@@ -444,31 +445,36 @@ export default function Home() {
     <>
       <Header />
 
-      {/* Hero Banner */}
+      {/* Hero Banner with Interactive Background */}
       <Box
         sx={{
-          background:
-            theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
-              : 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
-          py: { xs: 4, md: 6 },
+          position: 'relative',
+          minHeight: { xs: 200, md: 280 },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
-        <Container maxWidth="lg">
+        <InteractiveHeroBackground isDarkMode={theme.palette.mode === 'dark'} />
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', py: { xs: 4, md: 6 } }}>
               <Typography
                 variant="h2"
                 sx={{
                   fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
                   fontWeight: 800,
-                  color: '#fff',
+                  color: theme.palette.mode === 'dark' ? '#fff' : '#1a1a2e',
                   mb: 1,
+                  textShadow: theme.palette.mode === 'dark'
+                    ? '0 2px 20px rgba(0,0,0,0.5)'
+                    : '0 2px 20px rgba(255,255,255,0.8)',
                 }}
               >
                 VIB Builders
@@ -477,8 +483,11 @@ export default function Home() {
                 variant="h5"
                 sx={{
                   fontSize: { xs: '1rem', sm: '1.2rem' },
-                  fontWeight: 400,
-                  color: 'rgba(255,255,255,0.9)',
+                  fontWeight: 500,
+                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : '#444',
+                  textShadow: theme.palette.mode === 'dark'
+                    ? '0 1px 10px rgba(0,0,0,0.3)'
+                    : '0 1px 10px rgba(255,255,255,0.5)',
                 }}
               >
                 바이브 코딩 커뮤니티 — AI와 함께 성장하는 빌더들의 공간
