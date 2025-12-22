@@ -21,7 +21,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 interface ReportDialogProps {
   open: boolean;
@@ -75,7 +74,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
 }) => {
   const theme = useTheme();
   const { language } = useLanguage();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [selectedReason, setSelectedReason] = useState('');
   const [detail, setDetail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,7 +100,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify(requestBody),
       });
