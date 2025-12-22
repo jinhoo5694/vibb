@@ -32,7 +32,11 @@ import {
   Flag as FlagIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Code as CodeIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
@@ -49,6 +53,142 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { ReportDialog } from '@/components/Community/ReportDialog';
 import { PostNavigationList } from '@/components/Community/PostNavigationList';
+
+// Parse markdown to render content with code blocks and links
+function MarkdownPreview({ content, isDark }: { content: string; isDark: boolean }) {
+  const theme = useTheme();
+
+  const parseContent = (text: string) => {
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let key = 0;
+
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const parts: { type: 'text' | 'code'; content: string; language?: string }[] = [];
+    let match;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+      }
+      parts.push({ type: 'code', content: match[2], language: match[1] || 'text' });
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({ type: 'text', content: text.slice(lastIndex) });
+    }
+
+    parts.forEach((part) => {
+      if (part.type === 'code') {
+        elements.push(
+          <Box key={key++} sx={{ my: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.5,
+                bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                borderRadius: '4px 4px 0 0',
+                border: `1px solid ${theme.palette.divider}`,
+                borderBottom: 'none',
+              }}
+            >
+              <CodeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+              <Typography variant="caption" color="text.secondary">
+                {part.language}
+              </Typography>
+            </Box>
+            <SyntaxHighlighter
+              language={part.language}
+              style={isDark ? oneDark : oneLight}
+              customStyle={{
+                margin: 0,
+                borderRadius: '0 0 4px 4px',
+                border: `1px solid ${theme.palette.divider}`,
+                borderTop: 'none',
+                fontSize: '0.85rem',
+              }}
+            >
+              {part.content.trim()}
+            </SyntaxHighlighter>
+          </Box>
+        );
+      } else {
+        const textContent = part.content;
+        const textElements: React.ReactNode[] = [];
+        let textLastIndex = 0;
+        let linkMatch;
+
+        const linkRegexLocal = /\[([^\]]+)\]\(([^)]+)\)/g;
+        while ((linkMatch = linkRegexLocal.exec(textContent)) !== null) {
+          if (linkMatch.index > textLastIndex) {
+            const beforeText = textContent.slice(textLastIndex, linkMatch.index);
+            beforeText.split('\n').forEach((line, i, arr) => {
+              if (line.trim()) {
+                textElements.push(<span key={key++}>{line}</span>);
+              }
+              if (i < arr.length - 1) {
+                textElements.push(<br key={key++} />);
+              }
+            });
+          }
+          textElements.push(
+            <Box
+              key={key++}
+              component="a"
+              href={linkMatch[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                color: '#ff6b35',
+                textDecoration: 'none',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              <LinkIcon sx={{ fontSize: 14 }} />
+              {linkMatch[1]}
+            </Box>
+          );
+          textLastIndex = linkMatch.index + linkMatch[0].length;
+        }
+
+        if (textLastIndex < textContent.length) {
+          const remainingText = textContent.slice(textLastIndex);
+          remainingText.split('\n').forEach((line, i, arr) => {
+            if (line.trim()) {
+              textElements.push(<span key={key++}>{line}</span>);
+            }
+            if (i < arr.length - 1) {
+              textElements.push(<br key={key++} />);
+            }
+          });
+        }
+
+        if (textElements.length > 0) {
+          elements.push(
+            <Typography key={key++} component="div" sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+              {textElements}
+            </Typography>
+          );
+        }
+      }
+    });
+
+    return elements;
+  };
+
+  if (!content.trim()) {
+    return null;
+  }
+
+  return <Box>{parseContent(content)}</Box>;
+}
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -682,18 +822,8 @@ export default function PostDetailPage() {
           </Box>
 
           {/* Post Content */}
-          <Box sx={{ p: 3 }}>
-            <Typography
-              variant="body1"
-              sx={{
-                lineHeight: 1.8,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                minHeight: 100,
-              }}
-            >
-              {post.content}
-            </Typography>
+          <Box sx={{ p: 3, minHeight: 100 }}>
+            <MarkdownPreview content={post.content} isDark={theme.palette.mode === 'dark'} />
 
             {/* Tags */}
             {post.tags && post.tags.length > 0 && (
