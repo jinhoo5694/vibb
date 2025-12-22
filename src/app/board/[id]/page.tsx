@@ -901,30 +901,30 @@ export default function PostDetailPage() {
             </Box>
 
             {/* Other Actions */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Button
                 size="small"
-                startIcon={<CommentIcon />}
-                sx={{ color: 'text.secondary' }}
+                startIcon={<CommentIcon sx={{ fontSize: 18 }} />}
+                sx={{ color: 'text.secondary', fontSize: '0.875rem' }}
               >
                 {comments.length}
               </Button>
               <IconButton
                 size="small"
                 onClick={handleToggleBookmark}
-                sx={{ color: isBookmarked ? theme.palette.primary.main : 'text.secondary' }}
+                sx={{ color: isBookmarked ? theme.palette.primary.main : 'text.secondary', p: 1 }}
               >
-                {isBookmarked ? <BookmarkFilledIcon /> : <BookmarkIcon />}
+                {isBookmarked ? <BookmarkFilledIcon sx={{ fontSize: 20 }} /> : <BookmarkIcon sx={{ fontSize: 20 }} />}
               </IconButton>
-              <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                <ShareIcon />
+              <IconButton size="small" sx={{ color: 'text.secondary', p: 1 }}>
+                <ShareIcon sx={{ fontSize: 20 }} />
               </IconButton>
               <IconButton
                 size="small"
                 onClick={handleReportPost}
-                sx={{ color: 'text.secondary' }}
+                sx={{ color: 'text.secondary', p: 1 }}
               >
-                <FlagIcon />
+                <FlagIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </Box>
           </Box>
@@ -932,19 +932,11 @@ export default function PostDetailPage() {
 
         {/* Comments Section */}
         <Box sx={{ mt: 4 }}>
-          {/* New Comment Input Box */}
-          <Box
-            sx={{
-              mb: 3,
-              p: 2.5,
-              borderRadius: 2,
-              border: `1px solid ${theme.palette.divider}`,
-              bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#fafafa',
-            }}
-          >
+          {/* New Comment Input */}
+          <Box sx={{ mb: 3 }}>
             {user ? (
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 36, height: 36 }}>
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 32, height: 32, fontSize: '0.85rem' }}>
                   {user.email?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
@@ -1071,51 +1063,66 @@ export default function PostDetailPage() {
                         borderBottom: index < paginatedComments.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
                       }}
                     >
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                        {/* Avatar - fixed on left */}
                         <Box
                           component={comment.user?.id ? Link : 'div'}
                           href={comment.user?.id ? `/profile/${comment.user.id}` : undefined}
                           sx={{
-                            display: 'flex',
-                            gap: 1,
-                            alignItems: 'flex-start',
+                            flexShrink: 0,
                             textDecoration: 'none',
-                            color: 'inherit',
                             ...(comment.user?.id && {
                               cursor: 'pointer',
-                              '&:hover .comment-author-name': {
-                                color: 'primary.main',
-                                textDecoration: 'underline',
-                              },
+                              '&:hover': { opacity: 0.8 },
                             }),
                           }}
                         >
-                          <Avatar src={comment.user?.avatar_url || undefined} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                          <Avatar src={comment.user?.avatar_url || undefined} sx={{ width: 32, height: 32, fontSize: '0.85rem' }}>
                             {(comment.user?.nickname || comment.user?.email || '?').charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography variant="caption" className="comment-author-name" sx={{ fontWeight: 600, fontSize: '0.8rem', mt: 0.25 }}>
-                            {comment.user?.nickname || comment.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
-                          </Typography>
                         </Box>
+                        {/* Content area */}
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+                          {/* Author info row */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography
+                              component={comment.user?.id ? Link : 'span'}
+                              href={comment.user?.id ? `/profile/${comment.user.id}` : undefined}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.813rem',
+                                color: 'text.primary',
+                                textDecoration: 'none',
+                                ...(comment.user?.id && {
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                    textDecoration: 'underline',
+                                  },
+                                }),
+                              }}
+                            >
+                              {comment.user?.nickname || comment.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.75rem' }}>
                               {comment.created_at && formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: ko })}
                             </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.4, my: 0.25, wordBreak: 'break-word' }}>
+                          {/* Comment content */}
+                          <Typography variant="body2" sx={{ fontSize: '0.875rem', lineHeight: 1.5, mt: 0.5, mb: 0.5, wordBreak: 'break-word' }}>
                             {comment.content}
                           </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                             <Button
                               size="small"
-                              startIcon={likedComments.has(comment.id) ? <ThumbUpIcon sx={{ fontSize: 12 }} /> : <ThumbUpOutlinedIcon sx={{ fontSize: 12 }} />}
+                              startIcon={likedComments.has(comment.id) ? <ThumbUpIcon sx={{ fontSize: 14 }} /> : <ThumbUpOutlinedIcon sx={{ fontSize: 14 }} />}
                               onClick={() => handleToggleCommentLike(comment.id)}
                               sx={{
                                 color: likedComments.has(comment.id) ? '#ff6b35' : 'text.secondary',
                                 minWidth: 'auto',
-                                p: 0.25,
-                                fontSize: '0.7rem',
+                                px: 0.75,
+                                py: 0.25,
+                                fontSize: '0.75rem',
                                 minHeight: 'auto',
                               }}
                             >
@@ -1127,8 +1134,9 @@ export default function PostDetailPage() {
                               sx={{
                                 color: replyingToCommentId === comment.id ? '#ff6b35' : 'text.secondary',
                                 minWidth: 'auto',
-                                p: 0.25,
-                                fontSize: '0.7rem',
+                                px: 0.75,
+                                py: 0.25,
+                                fontSize: '0.75rem',
                                 minHeight: 'auto',
                                 fontWeight: replyingToCommentId === comment.id ? 600 : 400,
                               }}
@@ -1138,25 +1146,25 @@ export default function PostDetailPage() {
                             </Button>
                             <Button
                               size="small"
-                              startIcon={<FlagIcon sx={{ fontSize: 10 }} />}
+                              startIcon={<FlagIcon sx={{ fontSize: 14 }} />}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReportComment(comment.id);
                               }}
-                              sx={{ color: 'text.disabled', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                              sx={{ color: 'text.disabled', minWidth: 'auto', px: 0.75, py: 0.25, fontSize: '0.75rem', minHeight: 'auto' }}
                             >
                               {language === 'ko' ? '신고' : 'Report'}
                             </Button>
                             {canDeleteComment(comment) && (
                               <Button
                                 size="small"
-                                startIcon={deletingCommentId === comment.id ? <CircularProgress size={10} /> : <DeleteIcon sx={{ fontSize: 10 }} />}
+                                startIcon={deletingCommentId === comment.id ? <CircularProgress size={12} /> : <DeleteIcon sx={{ fontSize: 14 }} />}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteComment(comment.id);
                                 }}
                                 disabled={deletingCommentId === comment.id}
-                                sx={{ color: 'error.main', minWidth: 'auto', p: 0.25, fontSize: '0.7rem', minHeight: 'auto' }}
+                                sx={{ color: 'error.main', minWidth: 'auto', px: 0.75, py: 0.25, fontSize: '0.75rem', minHeight: 'auto' }}
                               >
                                 {language === 'ko' ? '삭제' : 'Delete'}
                               </Button>
@@ -1175,7 +1183,7 @@ export default function PostDetailPage() {
                               }}
                             >
                               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
+                                <Avatar src={user.user_metadata?.avatar_url} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
                                   {user.email?.charAt(0).toUpperCase()}
                                 </Avatar>
                                 <Box sx={{ flex: 1 }}>
@@ -1202,7 +1210,7 @@ export default function PostDetailPage() {
                                         setReplyingToCommentId(null);
                                         setReplyText('');
                                       }}
-                                      sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
+                                      sx={{ fontSize: '0.813rem', color: 'text.secondary' }}
                                     >
                                       {language === 'ko' ? '취소' : 'Cancel'}
                                     </Button>
@@ -1212,7 +1220,7 @@ export default function PostDetailPage() {
                                       onClick={() => handleSubmitReply(comment.id)}
                                       disabled={!replyText.trim() || submittingReply}
                                       sx={{
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.813rem',
                                         bgcolor: '#ff6b35',
                                         '&:hover': { bgcolor: '#e55a2b' },
                                       }}
@@ -1242,50 +1250,65 @@ export default function PostDetailPage() {
                                   sx={{
                                     py: 1,
                                     display: 'flex',
-                                    gap: 1,
+                                    gap: 1.5,
                                     alignItems: 'flex-start',
                                   }}
                                 >
+                                  {/* Reply Avatar - fixed on left */}
                                   <Box
                                     component={reply.user?.id ? Link : 'div'}
                                     href={reply.user?.id ? `/profile/${reply.user.id}` : undefined}
                                     sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 0.5,
-                                      textDecoration: 'none',
-                                      color: 'inherit',
                                       flexShrink: 0,
+                                      textDecoration: 'none',
                                       ...(reply.user?.id && {
                                         cursor: 'pointer',
-                                        '&:hover .reply-author-name': {
-                                          color: 'primary.main',
-                                          textDecoration: 'underline',
-                                        },
+                                        '&:hover': { opacity: 0.8 },
                                       }),
                                     }}
                                   >
-                                    <Avatar src={reply.user?.avatar_url || undefined} sx={{ width: 20, height: 20, fontSize: '0.65rem' }}>
+                                    <Avatar src={reply.user?.avatar_url || undefined} sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
                                       {(reply.user?.nickname || reply.user?.email || '?').charAt(0).toUpperCase()}
                                     </Avatar>
-                                    <Typography variant="caption" className="reply-author-name" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
-                                      {reply.user?.nickname || reply.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
-                                    </Typography>
                                   </Box>
+                                  {/* Reply Content area */}
                                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-                                      {reply.created_at && formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: ko })}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                    {/* Reply author info row */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                      <Typography
+                                        component={reply.user?.id ? Link : 'span'}
+                                        href={reply.user?.id ? `/profile/${reply.user.id}` : undefined}
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: '0.75rem',
+                                          color: 'text.primary',
+                                          textDecoration: 'none',
+                                          ...(reply.user?.id && {
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                              color: 'primary.main',
+                                              textDecoration: 'underline',
+                                            },
+                                          }),
+                                        }}
+                                      >
+                                        {reply.user?.nickname || reply.user?.email?.split('@')[0] || (language === 'ko' ? '익명' : 'Anonymous')}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+                                        {reply.created_at && formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: ko })}
+                                      </Typography>
+                                    </Box>
+                                    {/* Reply content */}
+                                    <Typography variant="body2" sx={{ fontSize: '0.813rem', lineHeight: 1.5, mt: 0.25, wordBreak: 'break-word' }}>
                                       {reply.content}
                                     </Typography>
                                     {canDeleteReply(reply) && (
                                       <Button
                                         size="small"
-                                        startIcon={deletingReplyId === reply.id ? <CircularProgress size={8} /> : <DeleteIcon sx={{ fontSize: 10 }} />}
+                                        startIcon={deletingReplyId === reply.id ? <CircularProgress size={12} /> : <DeleteIcon sx={{ fontSize: 14 }} />}
                                         onClick={() => handleDeleteReply(reply.id)}
                                         disabled={deletingReplyId === reply.id}
-                                        sx={{ color: 'error.main', minWidth: 'auto', p: 0.25, fontSize: '0.65rem', minHeight: 'auto', mt: 0.25 }}
+                                        sx={{ color: 'error.main', minWidth: 'auto', px: 0.5, py: 0.25, fontSize: '0.7rem', minHeight: 'auto', mt: 0.25 }}
                                       >
                                         {language === 'ko' ? '삭제' : 'Delete'}
                                       </Button>

@@ -8,19 +8,14 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  ToggleButtonGroup,
-  ToggleButton,
   Chip,
   useTheme,
   Paper,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
   Pagination,
   useMediaQuery,
   Alert,
-  CircularProgress,
+  Button,
+  Skeleton,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -28,14 +23,18 @@ import {
   Whatshot as HotIcon,
   NewReleases as NewIcon,
   TrendingUp as TopIcon,
-  KeyboardArrowRight as ArrowIcon,
   Visibility as ViewIcon,
+  ThumbUp as ThumbUpIcon,
+  ChatBubbleOutline as CommentIcon,
+  Bookmark as BookmarkIcon,
+  BookmarkBorder as BookmarkBorderIcon,
+  AccessTime as TimeIcon,
 } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
-import { NewsListTable } from '@/components/News/NewsListTable';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -197,10 +196,38 @@ const sampleNews: NewsItem[] = [
   },
 ];
 
-// Compact news item for popular section
-const PopularNewsItem: React.FC<{ news: NewsItem; rank: number }> = ({ news, rank }) => {
+// Generate gradient based on category
+const getCategoryGradient = (category: NewsCategory, isDark: boolean) => {
+  const gradients: Record<NewsCategory, string> = {
+    'AI': isDark
+      ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    '개발': isDark
+      ? 'linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)'
+      : 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    '스타트업': isDark
+      ? 'linear-gradient(135deg, #134e4a 0%, #115e59 50%, #0f766e 100%)'
+      : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+    '트렌드': isDark
+      ? 'linear-gradient(135deg, #451a03 0%, #78350f 50%, #a16207 100%)'
+      : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    '튜토리얼': isDark
+      ? 'linear-gradient(135deg, #4a1942 0%, #831843 50%, #9d174d 100%)'
+      : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  };
+  return gradients[category];
+};
+
+// Trending News Card Component - Compact version for featured section
+const TrendingNewsCard: React.FC<{
+  news: NewsItem;
+  isBookmarked: boolean;
+  onToggleBookmark: () => void;
+  index: number;
+}> = ({ news, isBookmarked, onToggleBookmark, index }) => {
   const theme = useTheme();
   const { language } = useLanguage();
+  const isDark = theme.palette.mode === 'dark';
 
   const timeAgo = useMemo(() => {
     const now = new Date();
@@ -221,96 +248,337 @@ const PopularNewsItem: React.FC<{ news: NewsItem; rank: number }> = ({ news, ran
   }, [news.createdAt, language]);
 
   return (
-    <ListItem
-      component="a"
-      href={news.sourceUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      sx={{
-        px: 2,
-        py: 1.5,
-        cursor: 'pointer',
-        transition: 'background-color 0.2s',
-        textDecoration: 'none',
-        color: 'inherit',
-        '&:hover': {
-          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-        },
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        '&:last-child': {
-          borderBottom: 'none',
-        },
-      }}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.1 }}
+      style={{ height: '100%' }}
     >
-      {/* Rank Badge */}
-      <Box
+      <Paper
+        component="a"
+        href={news.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        elevation={0}
         sx={{
-          width: 28,
-          height: 28,
-          borderRadius: '50%',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 700,
-          fontSize: '0.85rem',
-          mr: 2,
-          flexShrink: 0,
-          bgcolor: rank <= 3
-            ? rank === 1 ? '#ff6b35' : rank === 2 ? '#ffc857' : '#94a3b8'
-            : theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-          color: rank <= 3 ? '#fff' : 'text.secondary',
+          flexDirection: 'column',
+          height: 160,
+          textDecoration: 'none',
+          position: 'relative',
+          borderRadius: 2,
+          overflow: 'hidden',
+          background: getCategoryGradient(news.category, isDark),
+          cursor: 'pointer',
+          transition: 'transform 0.2s, box-shadow 0.2s',
+          '&:hover': {
+            transform: 'translateY(-3px)',
+            boxShadow: isDark
+              ? '0 8px 24px rgba(0,0,0,0.4)'
+              : '0 8px 24px rgba(0,0,0,0.12)',
+          },
         }}
       >
-        {rank}
-      </Box>
+        {/* Overlay Pattern */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }}
+        />
 
-      {/* Content */}
-      <ListItemText
-        primary={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* Content */}
+        <Box
+          sx={{
+            position: 'relative',
+            p: 2,
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Top Bar */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Chip
-              label={news.category}
+              label={`${categoryIcons[news.category]} ${news.category}`}
               size="small"
               sx={{
                 height: 20,
-                fontSize: '0.7rem',
-                bgcolor: `${categoryColors[news.category]}20`,
-                color: categoryColors[news.category],
+                fontSize: '0.65rem',
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: '#fff',
                 fontWeight: 600,
+                backdropFilter: 'blur(10px)',
+                '& .MuiChip-label': { px: 0.75 },
               }}
             />
+            <Chip
+              label={`#${index + 1}`}
+              size="small"
+              sx={{
+                height: 18,
+                fontSize: '0.6rem',
+                bgcolor: '#ff6b35',
+                color: '#fff',
+                fontWeight: 700,
+                '& .MuiChip-label': { px: 0.5 },
+              }}
+            />
+          </Box>
+
+          {/* Title */}
+          <Typography
+            sx={{
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              lineHeight: 1.35,
+              textShadow: '0 1px 4px rgba(0,0,0,0.3)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              flex: 1,
+            }}
+          >
+            {news.title}
+          </Typography>
+
+          {/* Footer */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.65rem' }}>
+                {news.source}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                <ThumbUpIcon sx={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }} />
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem' }}>
+                  {news.upvoteCount}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleBookmark();
+              }}
+              sx={{
+                p: 0.25,
+                color: isBookmarked ? '#ff6b35' : 'rgba(255,255,255,0.8)',
+              }}
+            >
+              {isBookmarked ? <BookmarkIcon sx={{ fontSize: 14 }} /> : <BookmarkBorderIcon sx={{ fontSize: 14 }} />}
+            </IconButton>
+          </Box>
+        </Box>
+      </Paper>
+    </motion.div>
+  );
+};
+
+// Compact News Card Component - For multi-column grid
+const CompactNewsCard: React.FC<{
+  news: NewsItem;
+  isBookmarked: boolean;
+  onToggleBookmark: () => void;
+  index: number;
+}> = ({ news, isBookmarked, onToggleBookmark, index }) => {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const isDark = theme.palette.mode === 'dark';
+
+  const timeAgo = useMemo(() => {
+    const now = new Date();
+    const diff = now.getTime() - news.createdAt.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (language === 'ko') {
+      if (days > 0) return `${days}일 전`;
+      if (hours > 0) return `${hours}시간 전`;
+      return `${minutes}분 전`;
+    } else {
+      if (days > 0) return `${days}d ago`;
+      if (hours > 0) return `${hours}h ago`;
+      return `${minutes}m ago`;
+    }
+  }, [news.createdAt, language]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.02 }}
+      style={{ height: '100%' }}
+    >
+      <Paper
+        component="a"
+        href={news.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        elevation={0}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          textDecoration: 'none',
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: isDark ? '#1a1a1a' : '#fff',
+          transition: 'all 0.15s',
+          '&:hover': {
+            borderColor: categoryColors[news.category],
+            bgcolor: isDark ? '#222' : '#fafafa',
+            transform: 'translateY(-2px)',
+            boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.08)',
+            '& .news-title': {
+              color: categoryColors[news.category],
+            },
+          },
+        }}
+      >
+        {/* Category Color Bar */}
+        <Box
+          sx={{
+            height: 3,
+            bgcolor: categoryColors[news.category],
+          }}
+        />
+
+        {/* Content */}
+        <Box sx={{ p: 1.5, display: 'flex', flexDirection: 'column', height: 130 }}>
+          {/* Category + Source Row */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexShrink: 0 }}>
+            <Chip
+              label={`${categoryIcons[news.category]} ${news.category}`}
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                bgcolor: `${categoryColors[news.category]}15`,
+                color: categoryColors[news.category],
+                '& .MuiChip-label': { px: 0.75 },
+              }}
+            />
+            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+              {news.source}
+            </Typography>
+          </Box>
+
+          {/* Title - Fixed height area */}
+          <Box sx={{ flex: 1, minHeight: 0, mb: 0.75 }}>
             <Typography
-              variant="body2"
+              className="news-title"
               sx={{
                 fontWeight: 600,
+                fontSize: '0.875rem',
+                lineHeight: 1.4,
+                color: 'text.primary',
+                transition: 'color 0.15s',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flex: 1,
               }}
             >
               {news.title}
             </Typography>
           </Box>
-        }
-        secondary={
-          <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              {news.source}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <ViewIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
-              <Typography variant="caption" color="text.disabled">
-                {news.viewCount.toLocaleString()}
+
+          {/* Footer: Meta Info + Bookmark */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 1, borderTop: `1px solid ${theme.palette.divider}`, flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                {timeAgo}
               </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                <ThumbUpIcon sx={{ fontSize: 11, color: news.upvoteCount > 100 ? '#ff6b35' : 'text.disabled' }} />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: '0.65rem',
+                    color: news.upvoteCount > 100 ? '#ff6b35' : 'text.disabled',
+                    fontWeight: news.upvoteCount > 100 ? 600 : 400,
+                  }}
+                >
+                  {news.upvoteCount}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                <CommentIcon sx={{ fontSize: 11, color: 'text.disabled' }} />
+                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                  {news.commentCount}
+                </Typography>
+              </Box>
             </Box>
-            <Typography variant="caption" color="text.disabled">
-              {timeAgo}
+
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleBookmark();
+              }}
+              sx={{
+                p: 0.25,
+                color: isBookmarked ? '#ff6b35' : 'text.disabled',
+              }}
+            >
+              {isBookmarked ? <BookmarkIcon sx={{ fontSize: 16 }} /> : <BookmarkBorderIcon sx={{ fontSize: 16 }} />}
+            </IconButton>
+          </Box>
+        </Box>
+      </Paper>
+    </motion.div>
+  );
+};
+
+// Section Header Component
+const SectionHeader: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}> = ({ icon, title, subtitle, action }) => {
+  const theme = useTheme();
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,107,53,0.15)' : 'rgba(255,107,53,0.1)',
+            color: '#ff6b35',
+          }}
+        >
+          {icon}
+        </Box>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
             </Typography>
-          </Stack>
-        }
-      />
-    </ListItem>
+          )}
+        </Box>
+      </Box>
+      {action}
+    </Box>
   );
 };
 
@@ -319,6 +587,8 @@ export default function NewsPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isDark = theme.palette.mode === 'dark';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('new');
@@ -326,42 +596,40 @@ export default function NewsPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [popularNews, setPopularNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingSampleData, setUsingSampleData] = useState(false);
-  const newsPerPage = 20;
+  const newsPerPage = 15; // More items per page since rows are compact
 
   const categories: (NewsCategory | 'all')[] = ['all', 'AI', '개발', '스타트업', '트렌드', '튜토리얼'];
 
-  // Fetch news from database or use sample data based on debug mode
+  // Fetch news
   useEffect(() => {
     async function fetchNews() {
       setLoading(true);
 
-      // In debug mode, always use sample data
       if (isDebugMode()) {
         setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
-        setPopularNews(getSamplePopularNews());
         setUsingSampleData(true);
         setLoading(false);
         return;
       }
 
-      // In production mode, always fetch from server
       try {
-        const [fetchedNews, fetchedPopular] = await Promise.all([
-          getNews({ sortBy, category: selectedCategory, searchQuery }),
-          getPopularNews(5),
-        ]);
+        const fetchedNews = await getNews({ sortBy, category: selectedCategory, searchQuery });
 
-        setNews(fetchedNews);
-        setPopularNews(fetchedPopular);
-        setUsingSampleData(false);
+        // If no real news data, fall back to sample data for UI preview
+        if (fetchedNews.length === 0) {
+          setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
+          setUsingSampleData(true);
+        } else {
+          setNews(fetchedNews);
+          setUsingSampleData(false);
+        }
       } catch (error) {
         console.error('Error fetching news:', error);
-        setNews([]);
-        setPopularNews([]);
-        setUsingSampleData(false);
+        // On error, also fall back to sample data
+        setNews(sortSampleNews(sampleNews, sortBy, selectedCategory, searchQuery));
+        setUsingSampleData(true);
       } finally {
         setLoading(false);
       }
@@ -380,11 +648,9 @@ export default function NewsPage() {
         setBookmarkedIds(new Set());
       }
     }
-
     fetchBookmarks();
   }, [user?.id]);
 
-  // Sort sample data locally
   function sortSampleNews(
     data: NewsItem[],
     sort: SortOption,
@@ -392,13 +658,9 @@ export default function NewsPage() {
     query: string
   ): NewsItem[] {
     let filtered = data;
-
-    // Filter by category
     if (category !== 'all') {
       filtered = filtered.filter((n) => n.category === category);
     }
-
-    // Filter by search query
     if (query.trim()) {
       const q = query.toLowerCase();
       filtered = filtered.filter(
@@ -408,8 +670,6 @@ export default function NewsPage() {
           n.source.toLowerCase().includes(q)
       );
     }
-
-    // Sort
     switch (sort) {
       case 'hot':
         return [...filtered].sort((a, b) => b.viewCount - a.viewCount);
@@ -421,22 +681,8 @@ export default function NewsPage() {
     }
   }
 
-  function getSamplePopularNews(): NewsItem[] {
-    return [...sampleNews].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
-  }
-
-  const handleSortChange = (_: React.MouseEvent<HTMLElement>, newSort: SortOption | null) => {
-    if (newSort) {
-      setSortBy(newSort);
-    }
-  };
-
   const handleToggleBookmark = async (id: string) => {
-    if (!user?.id) {
-      // Optionally show login prompt
-      return;
-    }
-
+    if (!user?.id) return;
     try {
       const result = await toggleBookmark(id);
       setBookmarkedIds((prev) => {
@@ -453,392 +699,334 @@ export default function NewsPage() {
     }
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(news.length / newsPerPage);
+  // Get featured/trending news (top 3 items)
+  const trendingNews = news.slice(0, 3);
+
+  // Get remaining news for grid (skip top 3 when showing trending)
+  const gridNews = selectedCategory === 'all' && !searchQuery && currentPage === 1
+    ? news.slice(3)
+    : news;
+
+  // Pagination
+  const totalPages = Math.ceil(gridNews.length / newsPerPage);
   const paginatedNews = useMemo(() => {
     const startIndex = (currentPage - 1) * newsPerPage;
-    return news.slice(startIndex, startIndex + newsPerPage);
-  }, [news, currentPage, newsPerPage]);
+    return gridNews.slice(startIndex, startIndex + newsPerPage);
+  }, [gridNews, currentPage, newsPerPage]);
 
-  // Reset page when filter/sort/search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [sortBy, selectedCategory, searchQuery]);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 200, behavior: 'smooth' });
+    window.scrollTo({ top: 400, behavior: 'smooth' });
   };
 
   return (
     <>
       <Header />
 
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-        {/* Page Header */}
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              mb: 1,
-              background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            {language === 'ko' ? '뉴스' : 'News'}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {language === 'ko'
-              ? 'AI와 개발 관련 최신 소식을 확인하세요'
-              : 'Stay updated with the latest AI and development news'}
-          </Typography>
-        </Box>
+      {/* Hero Section with Gradient Background */}
+      <Box
+        sx={{
+          background: isDark
+            ? 'linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)'
+            : 'linear-gradient(180deg, #fff5f0 0%, #ffffff 100%)',
+          pt: { xs: 4, md: 6 },
+          pb: { xs: 3, md: 4 },
+        }}
+      >
+        <Container maxWidth="lg">
+          {/* Page Header */}
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                mb: 1.5,
+                background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: { xs: '2rem', md: '2.5rem' },
+              }}
+            >
+              {language === 'ko' ? 'AI & 개발 뉴스' : 'AI & Dev News'}
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto' }}>
+              {language === 'ko'
+                ? '바이브 코딩을 위한 최신 AI, 개발 소식을 한눈에'
+                : 'Latest AI and development news for vibe coding'}
+            </Typography>
+          </Box>
 
-        {/* Controls Bar */}
-        <Box
-          sx={{
-            mb: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1.5,
-          }}
-        >
-          {/* Search */}
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={language === 'ko' ? '검색...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 1.5,
-                bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? '#222' : '#fafafa',
-                },
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery && (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchQuery('')}>
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          {/* Sort + Categories */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              flexWrap: 'wrap',
-            }}
-          >
-            {/* Sort Section */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-                {language === 'ko' ? '정렬' : 'Sort'}
-              </Typography>
-              <ToggleButtonGroup
-                value={sortBy}
-                exclusive
-                onChange={handleSortChange}
-                size="small"
-                sx={{
-                  '& .MuiToggleButton-root': {
-                    textTransform: 'none',
-                    px: 1.5,
-                    py: 0.25,
-                    gap: 0.5,
-                    fontSize: '0.8rem',
-                    borderColor: theme.palette.divider,
-                    '&.Mui-selected': {
-                      bgcolor: '#ff6b35',
-                      color: '#fff',
-                      borderColor: '#ff6b35',
-                      '&:hover': {
-                        bgcolor: '#e55a2b',
-                      },
-                    },
+          {/* Search Bar */}
+          <Box sx={{ maxWidth: 600, mx: 'auto', mb: 3 }}>
+            <TextField
+              fullWidth
+              size="medium"
+              placeholder={language === 'ko' ? '뉴스 검색...' : 'Search news...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                  boxShadow: isDark ? 'none' : '0 2px 12px rgba(0,0,0,0.08)',
+                  '&:hover': {
+                    bgcolor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
                   },
+                  '&.Mui-focused': {
+                    boxShadow: `0 0 0 3px ${categoryColors['all']}30`,
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.disabled' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchQuery('')}>
+                      <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+
+          {/* Category Pills */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+            {categories.map((category) => {
+              const isSelected = selectedCategory === category;
+              const color = categoryColors[category];
+              const label = category === 'all' ? (language === 'ko' ? '전체' : 'All') : category;
+              const icon = categoryIcons[category];
+
+              return (
+                <Chip
+                  key={category}
+                  label={`${icon} ${label}`}
+                  onClick={() => setSelectedCategory(category)}
+                  sx={{
+                    px: 1,
+                    fontSize: '0.85rem',
+                    fontWeight: isSelected ? 700 : 500,
+                    bgcolor: isSelected ? color : 'transparent',
+                    color: isSelected ? '#fff' : 'text.secondary',
+                    border: `1.5px solid ${isSelected ? color : theme.palette.divider}`,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: isSelected ? color : `${color}20`,
+                      borderColor: color,
+                      transform: 'scale(1.02)',
+                    },
+                  }}
+                />
+              );
+            })}
+          </Box>
+
+          {/* Sort Buttons */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+            {[
+              { value: 'new', label: language === 'ko' ? '최신순' : 'Latest', icon: <NewIcon sx={{ fontSize: 16 }} /> },
+              { value: 'hot', label: language === 'ko' ? '인기순' : 'Popular', icon: <HotIcon sx={{ fontSize: 16 }} /> },
+              { value: 'top', label: language === 'ko' ? '추천순' : 'Top Rated', icon: <TopIcon sx={{ fontSize: 16 }} /> },
+            ].map((option) => (
+              <Button
+                key={option.value}
+                variant={sortBy === option.value ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={option.icon}
+                onClick={() => setSortBy(option.value as SortOption)}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 2,
+                  ...(sortBy === option.value
+                    ? {
+                        bgcolor: '#ff6b35',
+                        '&:hover': { bgcolor: '#e55a2b' },
+                      }
+                    : {
+                        borderColor: theme.palette.divider,
+                        color: 'text.secondary',
+                        '&:hover': {
+                          borderColor: '#ff6b35',
+                          color: '#ff6b35',
+                          bgcolor: 'transparent',
+                        },
+                      }),
                 }}
               >
-                <ToggleButton value="hot">
-                  <HotIcon sx={{ fontSize: 14 }} />
-                  {language === 'ko' ? '인기' : 'Hot'}
-                </ToggleButton>
-                <ToggleButton value="new">
-                  <NewIcon sx={{ fontSize: 14 }} />
-                  {language === 'ko' ? '최신' : 'New'}
-                </ToggleButton>
-                <ToggleButton value="top">
-                  <TopIcon sx={{ fontSize: 14 }} />
-                  {language === 'ko' ? '추천' : 'Top'}
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-
-            {/* Category Section */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-                {language === 'ko' ? '필터' : 'Filter'}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {categories.map((category) => {
-                  const color = categoryColors[category];
-                  const icon = categoryIcons[category];
-                  const isSelected = selectedCategory === category;
-                  const label = category === 'all' ? (language === 'ko' ? '전체' : 'All') : category;
-
-                  return (
-                    <Chip
-                      key={category}
-                      label={`${icon} ${label}`}
-                      size="small"
-                      onClick={() => setSelectedCategory(category)}
-                      sx={{
-                        fontWeight: isSelected ? 600 : 400,
-                        fontSize: '0.75rem',
-                        height: 26,
-                        bgcolor: isSelected ? color : 'transparent',
-                        color: isSelected ? '#fff' : 'text.secondary',
-                        border: `1px solid ${isSelected ? color : theme.palette.divider}`,
-                        '&:hover': {
-                          bgcolor: isSelected ? color : `${color}20`,
-                          borderColor: color,
-                        },
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-            </Box>
+                {option.label}
+              </Button>
+            ))}
           </Box>
-        </Box>
+        </Container>
+      </Box>
 
-        {/* Debug mode notice */}
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+        {/* Sample data notice */}
         {usingSampleData && !loading && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
+          <Alert severity="info" sx={{ mb: 4 }}>
             {language === 'ko'
-              ? '🔧 디버그 모드: 샘플 데이터를 표시하고 있습니다. 실제 데이터를 보려면 NEXT_PUBLIC_DEBUG_MODE=false로 설정하세요.'
-              : '🔧 Debug Mode: Showing sample data. Set NEXT_PUBLIC_DEBUG_MODE=false for real data.'}
+              ? '📰 현재 등록된 뉴스가 없어 샘플 데이터를 표시하고 있습니다. 곧 새로운 소식이 업데이트됩니다!'
+              : '📰 No news available yet. Showing sample data. New updates coming soon!'}
           </Alert>
         )}
 
         {/* Loading State */}
         {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress sx={{ color: '#ff6b35' }} />
+          <Box>
+            {/* Featured section skeleton */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                },
+                gap: 2,
+                mb: 4,
+              }}
+            >
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} variant="rounded" height={160} sx={{ borderRadius: 2 }} />
+              ))}
+            </Box>
+            {/* News grid skeleton */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                },
+                gap: 2,
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} variant="rounded" height={130} sx={{ borderRadius: 2 }} />
+              ))}
+            </Box>
           </Box>
         )}
 
-        {!loading && (
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', lg: 'row' },
-              gap: 3,
-            }}
-          >
-            {/* News List */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {paginatedNews.length > 0 ? (
-                <>
-                  <NewsListTable
-                    news={paginatedNews}
-                    bookmarkedIds={bookmarkedIds}
-                    onToggleBookmark={handleToggleBookmark}
-                    categoryColors={categoryColors}
-                  />
+        {!loading && news.length === 0 && (
+          <Box sx={{ textAlign: 'center', py: 12 }}>
+            <Typography variant="h5" color="text.secondary" gutterBottom>
+              {language === 'ko' ? '뉴스가 없습니다' : 'No news found'}
+            </Typography>
+            <Typography variant="body2" color="text.disabled">
+              {language === 'ko' ? '다른 검색어나 카테고리를 시도해보세요' : 'Try a different search or category'}
+            </Typography>
+          </Box>
+        )}
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: 2,
-                        mt: 3,
-                        py: 2,
-                      }}
-                    >
-                      <Pagination
-                        count={totalPages}
-                        page={currentPage}
-                        onChange={handlePageChange}
-                        color="primary"
-                        size={isMobile ? 'small' : 'medium'}
-                        showFirstButton
-                        showLastButton
-                        sx={{
-                          '& .MuiPaginationItem-root': {
-                            borderRadius: 1,
-                            minWidth: { xs: 28, sm: 32 },
-                            height: { xs: 28, sm: 32 },
-                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                            '&.Mui-selected': {
-                              bgcolor: '#ff6b35',
-                              color: '#fff',
-                              '&:hover': {
-                                bgcolor: '#e55a2b',
-                              },
-                            },
-                          },
-                        }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {language === 'ko'
-                          ? `총 ${news.length}개 (${currentPage}/${totalPages} 페이지)`
-                          : `Total ${news.length} (Page ${currentPage}/${totalPages})`}
-                      </Typography>
-                    </Box>
-                  )}
-                </>
-              ) : (
+        {!loading && news.length > 0 && (
+          <>
+            {/* Trending News Section */}
+            {trendingNews.length > 0 && selectedCategory === 'all' && !searchQuery && currentPage === 1 && (
+              <Box sx={{ mb: 5 }}>
+                <SectionHeader
+                  icon={<HotIcon />}
+                  title={language === 'ko' ? '실시간 트렌딩' : 'Trending Now'}
+                  subtitle={language === 'ko' ? '지금 가장 주목받는 소식' : 'Top stories right now'}
+                />
                 <Box
                   sx={{
-                    textAlign: 'center',
-                    py: 8,
-                    bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                    borderRadius: 1,
-                    border: `1px solid ${theme.palette.divider}`,
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(3, 1fr)',
+                    },
+                    gap: 2,
                   }}
                 >
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    {language === 'ko'
-                      ? (searchQuery ? '검색 결과가 없습니다' : '뉴스가 없습니다')
-                      : (searchQuery ? 'No results found' : 'No news yet')}
-                  </Typography>
-                  <Typography variant="body2" color="text.disabled">
-                    {language === 'ko'
-                      ? (searchQuery ? '다른 검색어를 입력해보세요' : '곧 새로운 소식이 올라옵니다!')
-                      : (searchQuery ? 'Try a different search term' : 'New updates coming soon!')}
-                  </Typography>
+                  {trendingNews.map((item, index) => (
+                    <TrendingNewsCard
+                      key={item.id}
+                      news={item}
+                      isBookmarked={bookmarkedIds.has(item.id)}
+                      onToggleBookmark={() => handleToggleBookmark(item.id)}
+                      index={index}
+                    />
+                  ))}
                 </Box>
-              )}
+              </Box>
+            )}
+
+            {/* News List */}
+            <Box sx={{ mb: 4 }}>
+              <SectionHeader
+                icon={<NewIcon />}
+                title={
+                  selectedCategory === 'all'
+                    ? (language === 'ko' ? '모든 뉴스' : 'All News')
+                    : `${categoryIcons[selectedCategory]} ${selectedCategory}`
+                }
+                subtitle={`${news.length}${language === 'ko' ? '개의 뉴스' : ' articles'}`}
+              />
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                  },
+                  gap: 2,
+                }}
+              >
+                {paginatedNews.map((item, index) => (
+                  <CompactNewsCard
+                    key={item.id}
+                    news={item}
+                    isBookmarked={bookmarkedIds.has(item.id)}
+                    onToggleBookmark={() => handleToggleBookmark(item.id)}
+                    index={index}
+                  />
+                ))}
+              </Box>
             </Box>
 
-            {/* Sidebar */}
-            <Box
-              sx={{
-                width: { xs: '100%', lg: 320 },
-                flexShrink: 0,
-                order: { xs: -1, lg: 0 },
-                position: { lg: 'sticky' },
-                top: { lg: 100 },
-                alignSelf: 'flex-start',
-              }}
-            >
-              {/* Trending News */}
-              <Paper
-                elevation={0}
-                sx={{
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  overflow: 'hidden',
-                }}
-              >
-                <Box
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Pagination
+                  count={totalPages}
+                  page={currentPage}
+                  onChange={handlePageChange}
+                  color="primary"
+                  size={isMobile ? 'small' : 'medium'}
+                  showFirstButton
+                  showLastButton
                   sx={{
-                    px: 2,
-                    py: 1.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8fafc',
-                    borderBottom: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <HotIcon sx={{ color: '#ff6b35', fontSize: 20 }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1 }}>
-                    {language === 'ko' ? '실시간 인기' : 'Trending'}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      '&:hover': { color: '#ff6b35' },
-                    }}
-                  >
-                    {language === 'ko' ? '더보기' : 'More'}
-                    <ArrowIcon sx={{ fontSize: 16 }} />
-                  </Typography>
-                </Box>
-                <List disablePadding>
-                  {popularNews.map((item, index) => (
-                    <PopularNewsItem key={item.id} news={item} rank={index + 1} />
-                  ))}
-                </List>
-              </Paper>
-
-              {/* Newsletter Signup */}
-              <Paper
-                elevation={0}
-                sx={{
-                  mt: 2,
-                  p: 2.5,
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  bgcolor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#fff8f5',
-                  display: { xs: 'none', lg: 'block' },
-                }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-                  {language === 'ko' ? '뉴스레터 구독' : 'Subscribe to Newsletter'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {language === 'ko'
-                    ? '매주 핫한 AI/개발 소식을 이메일로 받아보세요'
-                    : 'Get weekly hot AI/dev news in your inbox'}
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder={language === 'ko' ? '이메일 주소' : 'Email address'}
-                  sx={{
-                    mb: 1.5,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1.5,
+                    '& .MuiPaginationItem-root': {
+                      borderRadius: 2,
+                      fontWeight: 500,
+                      '&.Mui-selected': {
+                        bgcolor: '#ff6b35',
+                        color: '#fff',
+                        '&:hover': { bgcolor: '#e55a2b' },
+                      },
                     },
                   }}
                 />
-                <Box
-                  component="button"
-                  sx={{
-                    width: '100%',
-                    py: 1,
-                    bgcolor: '#ff6b35',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 1.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: '#e55a2b' },
-                  }}
-                >
-                  {language === 'ko' ? '구독하기' : 'Subscribe'}
-                </Box>
-              </Paper>
-            </Box>
-          </Box>
+              </Box>
+            )}
+          </>
         )}
       </Container>
 

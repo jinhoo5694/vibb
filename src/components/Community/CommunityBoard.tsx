@@ -163,23 +163,33 @@ const PopularPostItem: React.FC<{ post: Post; rank: number }> = ({ post, rank })
           </Box>
         }
         secondary={
-          <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
+          <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                maxWidth: 80,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
               {post.author.name}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
               <ThumbUpIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
               <Typography variant="caption" color="text.disabled">
                 {post.upvotes}
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
               <CommentIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
               <Typography variant="caption" color="text.disabled">
                 {post.commentCount}
               </Typography>
             </Box>
-            <Typography variant="caption" color="text.disabled">
+            <Typography variant="caption" color="text.disabled" sx={{ flexShrink: 0 }}>
               {timeAgo}
             </Typography>
           </Stack>

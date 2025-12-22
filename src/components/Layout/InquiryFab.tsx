@@ -15,6 +15,9 @@ import {
   CircularProgress,
   Alert,
   IconButton,
+  FormControlLabel,
+  Checkbox,
+  Typography,
 } from '@mui/material';
 import {
   Mail as MailIcon,
@@ -36,9 +39,9 @@ export const InquiryFab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [emailConsent, setEmailConsent] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: '',
     type: 'bug_report',
     title: '',
     description: '',
@@ -62,12 +65,12 @@ export const InquiryFab: React.FC = () => {
     setOpen(false);
     if (success) {
       setFormData({
-        email: '',
         type: 'bug_report',
         title: '',
         description: '',
       });
       setSuccess(false);
+      setEmailConsent(false);
     }
   };
 
@@ -85,23 +88,13 @@ export const InquiryFab: React.FC = () => {
 
     try {
       // Build request body according to API spec
-      const requestBody: {
-        type: string;
-        email: string;
-        title: string;
-        description: string;
-        user_id?: string;
-      } = {
+      const requestBody = {
         type: formData.type,
-        email: formData.email,
+        email: user?.email || '',
         title: formData.title,
         description: formData.description,
+        user_id: user?.id,
       };
-
-      // Include user_id if logged in
-      if (user?.id) {
-        requestBody.user_id = user.id;
-      }
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/send-inquiry`, {
         method: 'POST',
@@ -119,11 +112,11 @@ export const InquiryFab: React.FC = () => {
 
       setSuccess(true);
       setFormData({
-        email: '',
         type: 'bug_report',
         title: '',
         description: '',
       });
+      setEmailConsent(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('inquiry.error'));
     } finally {
@@ -234,17 +227,15 @@ export const InquiryFab: React.FC = () => {
                   </Alert>
                 )}
 
-                <TextField
-                  fullWidth
-                  label={t('inquiry.email')}
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  margin="dense"
-                  disabled={loading}
-                />
+                {/* Show user's email as read-only info */}
+                <Box sx={{ mb: 1.5, mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    {t('inquiry.email')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {user?.email}
+                  </Typography>
+                </Box>
 
                 <TextField
                   fullWidth
@@ -288,6 +279,30 @@ export const InquiryFab: React.FC = () => {
                   disabled={loading}
                   placeholder={t('inquiry.descriptionPlaceholder')}
                 />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={emailConsent}
+                      onChange={(e) => setEmailConsent(e.target.checked)}
+                      disabled={loading}
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        '&.Mui-checked': {
+                          color: '#ff6b35',
+                        },
+                        p: 0,
+                        mr: 1,
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem', lineHeight: 1.4 }}>
+                      {t('inquiry.emailConsent')}
+                    </Typography>
+                  }
+                  sx={{ mt: 2, alignItems: 'center', mx: 0 }}
+                />
               </>
             )}
           </DialogContent>
@@ -300,11 +315,14 @@ export const InquiryFab: React.FC = () => {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={loading}
+                disabled={loading || !emailConsent}
                 sx={{
                   background: 'linear-gradient(135deg, #ff6b35 0%, #ffc857 100%)',
                   '&:hover': {
                     background: 'linear-gradient(135deg, #ff8a5c 0%, #ffd477 100%)',
+                  },
+                  '&.Mui-disabled': {
+                    background: theme.palette.action.disabledBackground,
                   },
                 }}
               >
