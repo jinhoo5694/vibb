@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
@@ -112,6 +112,67 @@ const shareResources = [
     stats: '156개의 스킬',
   },
 ];
+
+// Typing animation component
+const TypewriterText = ({
+  text,
+  isDarkMode,
+  onComplete,
+}: {
+  text: string;
+  isDarkMode: boolean;
+  onComplete?: () => void;
+}) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    let index = 0;
+    const onCompleteCalledRef = { current: false };
+    const typingInterval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedText(text.slice(0, index + 1));
+        index++;
+      } else {
+        clearInterval(typingInterval);
+        if (!onCompleteCalledRef.current) {
+          onCompleteCalledRef.current = true;
+          onComplete?.();
+        }
+      }
+    }, 80);
+
+    return () => clearInterval(typingInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  useEffect(() => {
+    const cursorInterval = setInterval(() => {
+      setShowCursor((prev) => !prev);
+    }, 530);
+
+    return () => clearInterval(cursorInterval);
+  }, []);
+
+  return (
+    <Box component="span" sx={{ display: 'inline' }}>
+      {displayedText}
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          width: '3px',
+          height: '1em',
+          bgcolor: isDarkMode ? '#ff6b35' : '#ff6b35',
+          ml: 0.5,
+          verticalAlign: 'text-bottom',
+          opacity: showCursor ? 1 : 0,
+          transition: 'opacity 0.1s',
+        }}
+      />
+    </Box>
+  );
+};
 
 export default function Home() {
   const theme = useTheme();
@@ -470,21 +531,24 @@ export default function Home() {
                 sx={{
                   fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
                   fontWeight: 800,
-                  color: theme.palette.mode === 'dark' ? '#fff' : '#1a1a2e',
+                  color: theme.palette.mode === 'dark' ? '#e0e0e0' : '#2d3436',
                   mb: 1,
                   textShadow: theme.palette.mode === 'dark'
                     ? '0 2px 20px rgba(0,0,0,0.5)'
                     : '0 2px 20px rgba(255,255,255,0.8)',
                 }}
               >
-                VIB Builders
+                <TypewriterText
+                  text="Vibe Builders, ViBB"
+                  isDarkMode={theme.palette.mode === 'dark'}
+                />
               </Typography>
               <Typography
                 variant="h5"
                 sx={{
                   fontSize: { xs: '1rem', sm: '1.2rem' },
                   fontWeight: 500,
-                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : '#444',
+                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.85)' : '#555',
                   textShadow: theme.palette.mode === 'dark'
                     ? '0 1px 10px rgba(0,0,0,0.3)'
                     : '0 1px 10px rgba(255,255,255,0.5)',
