@@ -190,3 +190,112 @@ export async function getUserBookmarks(userId: string): Promise<Set<string>> {
 
   return new Set(data.map((b) => b.content_id));
 }
+
+// Get single news by ID
+export async function getNewsById(newsId: string): Promise<NewsItem | null> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('contents')
+    .select(`
+      *,
+      author:profiles!contents_author_id_fkey (
+        id,
+        nickname,
+        avatar_url
+      )
+    `)
+    .eq('id', newsId)
+    .eq('type', 'news')
+    .single();
+
+  if (error) {
+    console.error('Error fetching news by ID:', error);
+    return null;
+  }
+
+  return transformNewsRow(data as NewsWithAuthor);
+}
+
+// Create news (admin only)
+export interface CreateNewsInput {
+  title: string;
+  summary: string;
+  source: string;
+  sourceUrl: string;
+  category: NewsCategory;
+  authorId: string;
+}
+
+export async function createNews(input: CreateNewsInput): Promise<{ id: string } | null> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('contents')
+    .insert({
+      author_id: input.authorId,
+      type: 'news',
+      title: input.title,
+      body: input.summary,
+      content_status: 'published',
+      metadata: {
+        source: input.source,
+        source_url: input.sourceUrl,
+        category: input.category,
+      },
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Error creating news:', error);
+    return null;
+  }
+
+  return { id: data.id };
+}
+
+// Update news (admin only)
+export async function updateNews(newsId: string, input: CreateNewsInput): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('contents')
+    .update({
+      title: input.title,
+      body: input.summary,
+      metadata: {
+        source: input.source,
+        source_url: input.sourceUrl,
+        category: input.category,
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', newsId)
+    .eq('type', 'news');
+
+  if (error) {
+    console.error('Error updating news:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// Delete news (admin only)
+export async function deleteNews(newsId: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('contents')
+    .delete()
+    .eq('id', newsId)
+    .eq('type', 'news');
+
+  if (error) {
+    console.error('Error deleting news:', error);
+    return false;
+  }
+
+  return true;
+}

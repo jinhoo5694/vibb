@@ -1,7 +1,7 @@
 // Database types matching new Supabase schema
 
 // Content type enum (matches USER-DEFINED type in database)
-export type ContentType = 'skill' | 'mcp' | 'prompt' | 'post' | 'ai_tool';
+export type ContentType = 'skill' | 'mcp' | 'prompt' | 'post' | 'ai_tool' | 'plugin';
 
 // Content status enum (matches USER-DEFINED type in database)
 export type ContentStatus = 'pending' | 'published' | 'blocked';
@@ -55,6 +55,12 @@ export interface ContentMetadata {
   // For AI tools
   tool_url?: string;
   pricing?: string;
+
+  // For plugins (Claude Marketplace)
+  plugin_url?: string;
+  version?: string;
+  author_name?: string;
+  compatibility?: string;
 
   // For posts
   post_category?: 'general' | 'question';

@@ -15,6 +15,7 @@ import {
   Rating,
   Divider,
   CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   GitHub as GitHubIcon,
@@ -70,6 +71,7 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // Fetch skill data
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
       });
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert(t('common.linkCopied'));
+      setSnackbarOpen(true);
     }
   };
 
@@ -492,6 +494,24 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
       <Footer />
       <InquiryFab />
       <ScrollToTopFab />
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={t('common.linkCopied')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            bgcolor: '#ff6b35',
+            color: '#fff',
+            fontWeight: 500,
+            borderRadius: 2,
+            minWidth: 'auto',
+          },
+        }}
+      />
     </>
   );
 }

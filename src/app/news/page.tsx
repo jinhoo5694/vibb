@@ -16,6 +16,7 @@ import {
   Alert,
   Button,
   Skeleton,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,7 +30,10 @@ import {
   Bookmark as BookmarkIcon,
   BookmarkBorder as BookmarkBorderIcon,
   AccessTime as TimeIcon,
+  Add as AddIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
+import NextLink from 'next/link';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
@@ -50,6 +54,7 @@ import {
   toggleBookmark,
   SortOption,
 } from '@/services/newsService';
+import { getUserProfile } from '@/services/supabase';
 import { isDebugMode } from '@/lib/debug';
 
 // Sample news data (used only in debug mode)
@@ -386,7 +391,8 @@ const CompactNewsCard: React.FC<{
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   index: number;
-}> = ({ news, isBookmarked, onToggleBookmark, index }) => {
+  isAdmin?: boolean;
+}> = ({ news, isBookmarked, onToggleBookmark, index, isAdmin }) => {
   const theme = useTheme();
   const { language } = useLanguage();
   const isDark = theme.palette.mode === 'dark';
@@ -519,20 +525,41 @@ const CompactNewsCard: React.FC<{
               </Box>
             </Box>
 
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleBookmark();
-              }}
-              sx={{
-                p: 0.25,
-                color: isBookmarked ? '#ff6b35' : 'text.disabled',
-              }}
-            >
-              {isBookmarked ? <BookmarkIcon sx={{ fontSize: 16 }} /> : <BookmarkBorderIcon sx={{ fontSize: 16 }} />}
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {isAdmin && (
+                <Tooltip title={language === 'ko' ? '수정' : 'Edit'}>
+                  <IconButton
+                    component={NextLink}
+                    href={`/news/${news.id}/edit`}
+                    size="small"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                    }}
+                    sx={{
+                      p: 0.25,
+                      color: '#ff6b35',
+                      '&:hover': { bgcolor: 'rgba(255, 107, 53, 0.1)' },
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleBookmark();
+                }}
+                sx={{
+                  p: 0.25,
+                  color: isBookmarked ? '#ff6b35' : 'text.disabled',
+                }}
+              >
+                {isBookmarked ? <BookmarkIcon sx={{ fontSize: 16 }} /> : <BookmarkBorderIcon sx={{ fontSize: 16 }} />}
+              </IconButton>
+            </Box>
           </Box>
         </Box>
       </Paper>
@@ -598,6 +625,7 @@ export default function NewsPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingSampleData, setUsingSampleData] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const newsPerPage = 15; // More items per page since rows are compact
 
   const categories: (NewsCategory | 'all')[] = ['all', 'AI', '개발', '스타트업', '트렌드', '튜토리얼'];
@@ -638,17 +666,22 @@ export default function NewsPage() {
     fetchNews();
   }, [sortBy, selectedCategory, searchQuery]);
 
-  // Fetch user bookmarks
+  // Fetch user bookmarks and check admin status
   useEffect(() => {
-    async function fetchBookmarks() {
+    async function fetchUserData() {
       if (user?.id) {
-        const bookmarks = await getUserBookmarks(user.id);
+        const [bookmarks, profile] = await Promise.all([
+          getUserBookmarks(user.id),
+          getUserProfile(user.id),
+        ]);
         setBookmarkedIds(bookmarks);
+        setIsAdmin(profile?.role === 'admin');
       } else {
         setBookmarkedIds(new Set());
+        setIsAdmin(false);
       }
     }
-    fetchBookmarks();
+    fetchUserData();
   }, [user?.id]);
 
   function sortSampleNews(
@@ -699,13 +732,12 @@ export default function NewsPage() {
     }
   };
 
-  // Get featured/trending news (top 3 items)
-  const trendingNews = news.slice(0, 3);
+  // Get featured/trending news (top 3 items) - only show if we have more than 3 items
+  const showTrending = news.length > 3 && selectedCategory === 'all' && !searchQuery && currentPage === 1;
+  const trendingNews = showTrending ? news.slice(0, 3) : [];
 
-  // Get remaining news for grid (skip top 3 when showing trending)
-  const gridNews = selectedCategory === 'all' && !searchQuery && currentPage === 1
-    ? news.slice(3)
-    : news;
+  // Get remaining news for grid (skip top 3 only when showing trending section)
+  const gridNews = showTrending ? news.slice(3) : news;
 
   // Pagination
   const totalPages = Math.ceil(gridNews.length / newsPerPage);
@@ -759,6 +791,26 @@ export default function NewsPage() {
                 ? '바이브 코딩을 위한 최신 AI, 개발 소식을 한눈에'
                 : 'Latest AI and development news for vibe coding'}
             </Typography>
+            {isAdmin && (
+              <Button
+                component={NextLink}
+                href="/news/new"
+                variant="contained"
+                startIcon={<AddIcon />}
+                sx={{
+                  mt: 3,
+                  bgcolor: '#ff6b35',
+                  '&:hover': { bgcolor: '#e55a2b' },
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                }}
+              >
+                {language === 'ko' ? '뉴스 추가' : 'Add News'}
+              </Button>
+            )}
           </Box>
 
           {/* Search Bar */}
@@ -935,7 +987,7 @@ export default function NewsPage() {
         {!loading && news.length > 0 && (
           <>
             {/* Trending News Section */}
-            {trendingNews.length > 0 && selectedCategory === 'all' && !searchQuery && currentPage === 1 && (
+            {showTrending && trendingNews.length > 0 && (
               <Box sx={{ mb: 5 }}>
                 <SectionHeader
                   icon={<HotIcon />}
@@ -996,6 +1048,7 @@ export default function NewsPage() {
                     isBookmarked={bookmarkedIds.has(item.id)}
                     onToggleBookmark={() => handleToggleBookmark(item.id)}
                     index={index}
+                    isAdmin={isAdmin}
                   />
                 ))}
               </Box>
