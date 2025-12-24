@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Container,
@@ -200,6 +200,7 @@ export default function PostDetailPage() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+  const viewCountedRef = useRef(false);
   const [comments, setComments] = useState<ReviewWithUser[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -303,8 +304,11 @@ export default function PostDetailPage() {
         const foundPost = await getPostById(postId);
         if (foundPost) {
           setPost(foundPost);
-          // Increment view count
-          incrementViewCount(postId);
+          // Increment view count (only once per page load)
+          if (!viewCountedRef.current) {
+            viewCountedRef.current = true;
+            incrementViewCount(postId);
+          }
         }
 
         // Fetch comments from Supabase

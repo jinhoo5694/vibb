@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Container,
   Box,
@@ -43,7 +44,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { SubCategoryTag, subCategoryColors } from '@/types/post';
-import { createPost } from '@/services/supabase';
+import { createPost, updatePost, getPostById } from '@/services/supabase';
 
 // Language options for code blocks
 const CODE_LANGUAGES = [
@@ -214,7 +215,12 @@ export default function WritePostPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Edit mode
+  const editPostId = searchParams.get('edit');
+  const isEditMode = !!editPostId;
 
   // Form states
   const [title, setTitle] = useState('');
@@ -222,6 +228,30 @@ export default function WritePostPage() {
   const [selectedTags, setSelectedTags] = useState<SubCategoryTag[]>([]);
   const [showGuidelines, setShowGuidelines] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load post data when editing
+  useEffect(() => {
+    async function loadPostForEdit() {
+      if (!editPostId) return;
+
+      setIsLoading(true);
+      try {
+        const post = await getPostById(editPostId);
+        if (post) {
+          setTitle(post.title);
+          setContent(post.content);
+          setSelectedTags(post.tags as SubCategoryTag[] || []);
+        }
+      } catch (error) {
+        console.error('Error loading post for edit:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadPostForEdit();
+  }, [editPostId]);
 
   // Editor mode: 'edit' or 'preview'
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit');
@@ -322,27 +352,50 @@ export default function WritePostPage() {
     setIsSubmitting(true);
 
     try {
-      const tags: string[] = [...selectedTags];
+      if (isEditMode && editPostId) {
+        // Update existing post
+        const success = await updatePost(editPostId, user.id, {
+          title: title.trim(),
+          body: content,
+          metadata: {
+            selectedTags,
+          },
+        });
 
-      const result = await createPost(user.id, {
-        title: title.trim(),
-        body: content,
-        type: 'post',
-        tags,
-        metadata: {
-          selectedTags,
-        },
-      });
-
-      if (result) {
-        alert(language === 'ko' ? '게시글이 등록되었습니다!' : 'Post submitted!');
-        router.push('/board');
+        if (success) {
+          alert(language === 'ko' ? '게시글이 수정되었습니다!' : 'Post updated!');
+          router.push(`/board/${editPostId}`);
+        } else {
+          throw new Error('Failed to update post');
+        }
       } else {
-        throw new Error('Failed to create post');
+        // Create new post
+        const tags: string[] = [...selectedTags];
+
+        const result = await createPost(user.id, {
+          title: title.trim(),
+          body: content,
+          type: 'post',
+          tags,
+          metadata: {
+            selectedTags,
+          },
+        });
+
+        if (result) {
+          alert(language === 'ko' ? '게시글이 등록되었습니다!' : 'Post submitted!');
+          router.push('/board');
+        } else {
+          throw new Error('Failed to create post');
+        }
       }
     } catch (error) {
       console.error('Error submitting post:', error);
-      alert(language === 'ko' ? '게시글 등록에 실패했습니다.' : 'Failed to submit post.');
+      alert(
+        language === 'ko'
+          ? isEditMode ? '게시글 수정에 실패했습니다.' : '게시글 등록에 실패했습니다.'
+          : isEditMode ? 'Failed to update post.' : 'Failed to submit post.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -377,7 +430,9 @@ export default function WritePostPage() {
             backgroundClip: 'text',
           }}
         >
-          {language === 'ko' ? '새 글 작성' : 'Write New Post'}
+          {isEditMode
+            ? (language === 'ko' ? '글 수정' : 'Edit Post')
+            : (language === 'ko' ? '새 글 작성' : 'Write New Post')}
         </Typography>
 
         {/* Community Guidelines */}
@@ -688,12 +743,12 @@ export default function WritePostPage() {
             }}
           >
             {isSubmitting
-              ? language === 'ko'
-                ? '등록 중...'
-                : 'Submitting...'
-              : language === 'ko'
-                ? '게시하기'
-                : 'Submit'}
+              ? (language === 'ko'
+                  ? (isEditMode ? '수정 중...' : '등록 중...')
+                  : (isEditMode ? 'Updating...' : 'Submitting...'))
+              : (language === 'ko'
+                  ? (isEditMode ? '수정하기' : '게시하기')
+                  : (isEditMode ? 'Update' : 'Submit'))}
           </Button>
         </Box>
       </Container>

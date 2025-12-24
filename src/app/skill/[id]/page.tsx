@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -68,6 +68,7 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
   const [license, setLicense] = useState<License | null>(null);
   const [relatedSkills, setRelatedSkills] = useState<SkillWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const viewCountedRef = useRef(false);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
@@ -90,8 +91,11 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         if (skillData) {
           setSkill(skillData);
           setLikesCount(skillData.likes_count || 0);
-          // Increment view count
-          incrementViewCount(id);
+          // Increment view count (only once per page load)
+          if (!viewCountedRef.current) {
+            viewCountedRef.current = true;
+            incrementViewCount(id);
+          }
         }
         setContents(contentsData);
         setLicense(licenseData);

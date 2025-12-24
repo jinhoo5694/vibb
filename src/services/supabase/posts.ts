@@ -377,6 +377,46 @@ export async function getPostById(postId: string): Promise<Post | null> {
   return contentToPost(contentWithRelations);
 }
 
+// Update an existing post
+export async function updatePost(
+  postId: string,
+  userId: string,
+  data: {
+    title: string;
+    body: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<boolean> {
+  // Verify ownership
+  const { data: content } = await supabase
+    .from('contents')
+    .select('author_id')
+    .eq('id', postId)
+    .single();
+
+  if (!content || content.author_id !== userId) {
+    console.error('[updatePost] User does not own this post');
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('contents')
+    .update({
+      title: data.title,
+      body: data.body,
+      metadata: data.metadata || {},
+    })
+    .eq('id', postId);
+
+  if (error) {
+    console.error('[updatePost] Error updating post:', error);
+    return false;
+  }
+
+  console.log('[updatePost] Post updated successfully');
+  return true;
+}
+
 // Delete a post
 export async function deletePost(postId: string, userId: string, isAdmin: boolean = false): Promise<boolean> {
   // Verify ownership unless admin
