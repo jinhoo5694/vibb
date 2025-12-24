@@ -135,6 +135,8 @@ const PopularPostItem: React.FC<{ post: Post; rank: number }> = ({ post, rank })
 
       {/* Content */}
       <ListItemText
+        primaryTypographyProps={{ component: 'div' }}
+        secondaryTypographyProps={{ component: 'div' }}
         primary={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Chip

@@ -34,6 +34,7 @@ import {
   Delete as DeleteIcon,
   Code as CodeIcon,
   Link as LinkIcon,
+  Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -46,7 +47,7 @@ import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { Post, categoryColors, categoryIcons, PostCategory } from '@/types/post';
 import { ReviewWithUser } from '@/types/database';
-import { getPostById, getBoardPosts, getPostComments, addPostComment, deletePost, deletePostComment, addReply, deleteReply } from '@/services/supabase';
+import { getPostById, getBoardPosts, getPostComments, addPostComment, deletePost, deletePostComment, addReply, deleteReply, incrementViewCount } from '@/services/supabase';
 import { createClient } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -302,6 +303,8 @@ export default function PostDetailPage() {
         const foundPost = await getPostById(postId);
         if (foundPost) {
           setPost(foundPost);
+          // Increment view count
+          incrementViewCount(postId);
         }
 
         // Fetch comments from Supabase
@@ -902,6 +905,14 @@ export default function PostDetailPage() {
 
             {/* Other Actions */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Button
+                size="small"
+                startIcon={<ViewIcon sx={{ fontSize: 18 }} />}
+                sx={{ color: 'text.secondary', fontSize: '0.875rem', cursor: 'default', '&:hover': { bgcolor: 'transparent' } }}
+                disableRipple
+              >
+                {post.viewCount ?? 0}
+              </Button>
               <Button
                 size="small"
                 startIcon={<CommentIcon sx={{ fontSize: 18 }} />}

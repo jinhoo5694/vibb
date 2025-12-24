@@ -740,36 +740,22 @@ export async function getPluginLicense(pluginId: string): Promise<PluginLicense 
 }
 
 // Increment view count
-export async function incrementPluginViewCount(pluginId: string): Promise<void> {
+export async function incrementPluginViewCount(pluginId: string): Promise<boolean> {
   if (isDebugMode()) {
     console.log('[DEBUG] incrementPluginViewCount:', pluginId);
-    return;
+    return true;
   }
 
-  try {
-    // Try RPC first
-    const { error: rpcError } = await supabase.rpc('increment_view_count', {
-      content_id: pluginId,
-    });
+  const { data, error } = await supabase.rpc('increment_view_count', {
+    target_content_id: pluginId
+  });
 
-    if (rpcError) {
-      // Fallback to manual increment
-      const { data: current } = await supabase
-        .from('contents')
-        .select('view_count')
-        .eq('id', pluginId)
-        .single();
-
-      if (current) {
-        await supabase
-          .from('contents')
-          .update({ view_count: (current.view_count || 0) + 1 })
-          .eq('id', pluginId);
-      }
-    }
-  } catch (err) {
-    console.error('Error incrementing view count:', err);
+  if (error) {
+    console.error('Error incrementing view count:', error);
+    return false;
   }
+
+  return data?.counted ?? false;
 }
 
 // Get average rating for plugin

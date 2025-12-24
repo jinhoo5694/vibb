@@ -136,10 +136,19 @@ export async function getPopularNews(limit: number = 5): Promise<NewsItem[]> {
 }
 
 // Increment view count
-export async function incrementViewCount(newsId: string): Promise<void> {
+export async function incrementViewCount(newsId: string): Promise<boolean> {
   const supabase = createClient();
 
-  await supabase.rpc('increment_view_count', { content_id: newsId });
+  const { data, error } = await supabase.rpc('increment_view_count', {
+    target_content_id: newsId
+  });
+
+  if (error) {
+    console.error('Error incrementing view count:', error);
+    return false;
+  }
+
+  return data?.counted ?? false;
 }
 
 // Check if user has bookmarked news
