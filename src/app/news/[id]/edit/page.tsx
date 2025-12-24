@@ -142,6 +142,8 @@ export default function EditNewsPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
+    if (!user) return;
+
     setSaving(true);
     try {
       const input: CreateNewsInput = {

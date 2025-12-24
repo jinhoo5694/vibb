@@ -29,7 +29,8 @@
       "WebFetch(domain:www.prpt.ai)",
       "WebFetch(domain:www.artificialintelligence-news.com)",
       "Bash(git diff:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

@@ -389,7 +389,7 @@ export default function TermsOfServicePage() {
 
                 {section.subsections?.map((sub, subIndex) => (
                   <Box key={subIndex} sx={{ mb: subIndex < section.subsections!.length - 1 ? 3 : 0 }}>
-                    {sub.subtitle && (
+                    {'subtitle' in sub && sub.subtitle && (
                       <Typography
                         variant="subtitle2"
                         sx={{
@@ -402,7 +402,7 @@ export default function TermsOfServicePage() {
                       </Typography>
                     )}
 
-                    {sub.content && (
+                    {'content' in sub && sub.content && (
                       <Typography
                         variant="body2"
                         sx={{
@@ -415,7 +415,7 @@ export default function TermsOfServicePage() {
                       </Typography>
                     )}
 
-                    {sub.items && (
+                    {'items' in sub && sub.items && (
                       <Box sx={{ pl: 2 }}>
                         {sub.items.map((item, itemIndex) => (
                           <Box

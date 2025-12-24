@@ -443,7 +443,7 @@ export default function PrivacyPolicyPage() {
 
                 {section.subsections?.map((sub, subIndex) => (
                   <Box key={subIndex} sx={{ mb: subIndex < section.subsections!.length - 1 ? 3 : 0 }}>
-                    {sub.subtitle && (
+                    {'subtitle' in sub && sub.subtitle && (
                       <Typography
                         variant="subtitle2"
                         sx={{
@@ -456,7 +456,7 @@ export default function PrivacyPolicyPage() {
                       </Typography>
                     )}
 
-                    {sub.content && (
+                    {'content' in sub && sub.content && (
                       <Typography
                         variant="body2"
                         sx={{
@@ -469,7 +469,7 @@ export default function PrivacyPolicyPage() {
                       </Typography>
                     )}
 
-                    {sub.items && (
+                    {'items' in sub && sub.items && (
                       <Box sx={{ pl: 2 }}>
                         {sub.items.map((item, itemIndex) => (
                           <Box
@@ -505,7 +505,7 @@ export default function PrivacyPolicyPage() {
                       </Box>
                     )}
 
-                    {sub.table && (
+                    {'table' in sub && sub.table && (
                       <TableContainer
                         sx={{
                           mt: 1,
@@ -556,7 +556,7 @@ export default function PrivacyPolicyPage() {
                       </TableContainer>
                     )}
 
-                    {sub.links && (
+                    {'links' in sub && sub.links && (
                       <Box sx={{ pl: 2 }}>
                         {sub.links.map((link, linkIndex) => (
                           <Box
@@ -590,7 +590,7 @@ export default function PrivacyPolicyPage() {
                       </Box>
                     )}
 
-                    {sub.note && (
+                    {'note' in sub && sub.note && (
                       <Typography
                         variant="body2"
                         sx={{

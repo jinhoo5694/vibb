@@ -84,6 +84,8 @@ export default function NewNewsPage() {
       return;
     }
 
+    if (!user) return;
+
     setSaving(true);
     try {
       const input: CreateNewsInput = {
