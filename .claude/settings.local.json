@@ -24,7 +24,13 @@
       "Bash(git merge:*)",
       "Bash(git push:*)",
       "Bash(git stash:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "WebFetch(domain:www.themiilk.com)",
+      "WebFetch(domain:www.prpt.ai)",
+      "WebFetch(domain:www.artificialintelligence-news.com)",
+      "Bash(git diff:*)",
+      "Bash(echo:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

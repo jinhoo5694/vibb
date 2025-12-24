@@ -46,6 +46,8 @@ import {
   HourglassEmpty as PendingIcon,
   Warning as WarningIcon,
   PhotoCamera as PhotoCameraIcon,
+  Reply as ReplyIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
@@ -82,11 +84,19 @@ interface UserProfile {
 
 interface UserComment {
   id: string;
+  type: 'review' | 'reply';
   content: string;
+  rating: number | null;
   created_at: string;
-  content_id: string;
-  content_title: string;
-  content_type: string;
+  parent_content: {
+    id: string;
+    title: string;
+    type: 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post' | 'news';
+  };
+  parent_review: {
+    id: string;
+    content: string;
+  } | null;
 }
 
 interface SavedContent {
@@ -181,29 +191,13 @@ export default function MyPage() {
         setEditBio(typeof profileData.bio === 'string' ? profileData.bio : '');
       }
 
-      // Fetch user's reviews/comments
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select(`
-          id,
-          content,
-          created_at,
-          content_id,
-          contents:content_id (title, type)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Fetch user's reviews/comments including replies using RPC
+      const { data: reviewsData, error: reviewsError } = await supabase.rpc('get_my_all_reviews', {});
 
-      if (reviewsData) {
-        setComments(reviewsData.map((r: Record<string, unknown>) => ({
-          id: r.id as string,
-          content: r.content as string,
-          created_at: r.created_at as string,
-          content_id: r.content_id as string,
-          content_title: (r.contents as Record<string, unknown>)?.title as string || 'Unknown',
-          content_type: (r.contents as Record<string, unknown>)?.type as string || 'post',
-        })));
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError);
+      } else if (reviewsData) {
+        setComments(reviewsData as UserComment[]);
       }
 
       // Fetch bookmarked contents using RPC
@@ -253,19 +247,15 @@ export default function MyPage() {
     if (!user || !profile) return;
     setSaving(true);
 
-    console.log('Saving profile for user.id:', user.id);
-    console.log('Current profile.id:', profile.id);
-
     try {
-      // Use upsert to handle both insert and update cases
-      // This also works better with some RLS configurations
+      // Use PATCH (update) instead of POST (upsert) - RLS policy only allows UPDATE
       const { data, error } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
+        .update({
           nickname: editNickname,
           bio: editBio,
         })
+        .eq('id', user.id)
         .select();
 
       if (error) {
@@ -275,7 +265,6 @@ export default function MyPage() {
         console.error('No rows updated. User ID:', user.id);
         alert(language === 'ko' ? '프로필을 찾을 수 없습니다.' : 'Profile not found.');
       } else {
-        console.log('Profile updated:', data);
         setProfile({ ...profile, nickname: editNickname, bio: editBio });
         setEditing(false);
       }
@@ -606,7 +595,7 @@ export default function MyPage() {
                     {index > 0 && <Divider />}
                     <ListItem
                       component={Link}
-                      href={getContentLink(comment.content_type, comment.content_id)}
+                      href={getContentLink(comment.parent_content.type, comment.parent_content.id)}
                       sx={{
                         textDecoration: 'none',
                         color: 'inherit',
@@ -614,24 +603,73 @@ export default function MyPage() {
                       }}
                     >
                       <ListItemIcon>
-                        {getContentIcon(comment.content_type)}
+                        {comment.type === 'reply' ? (
+                          <ReplyIcon color="action" />
+                        ) : (
+                          getContentIcon(comment.parent_content.type)
+                        )}
                       </ListItemIcon>
                       <ListItemText
                         primary={
-                          <Typography variant="body2" sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                          }}>
-                            {comment.content}
-                          </Typography>
+                          <Box>
+                            {/* Reply indicator */}
+                            {comment.type === 'reply' && comment.parent_review && (
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                mb: 0.5,
+                                color: 'text.secondary',
+                                fontSize: '0.75rem',
+                              }}>
+                                <ReplyIcon sx={{ fontSize: 14 }} />
+                                <Typography variant="caption" sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: 300,
+                                }}>
+                                  {comment.parent_review.content}
+                                </Typography>
+                              </Box>
+                            )}
+                            <Typography variant="body2" sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}>
+                              {comment.content}
+                            </Typography>
+                          </Box>
                         }
                         secondary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {comment.content_title}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                            <Chip
+                              label={comment.type === 'reply'
+                                ? (language === 'ko' ? '대댓글' : 'Reply')
+                                : (language === 'ko' ? '댓글' : 'Comment')}
+                              size="small"
+                              color={comment.type === 'reply' ? 'default' : 'primary'}
+                              variant="outlined"
+                              sx={{ height: 18, fontSize: '0.65rem' }}
+                            />
+                            {comment.type === 'review' && comment.rating && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                                <StarIcon sx={{ fontSize: 14, color: '#ffc107' }} />
+                                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                  {comment.rating}
+                                </Typography>
+                              </Box>
+                            )}
+                            <Typography variant="caption" color="text.secondary" sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: 200,
+                            }}>
+                              {comment.parent_content.title}
                             </Typography>
                             <Typography variant="caption" color="text.disabled">
                               {new Date(comment.created_at).toLocaleDateString()}

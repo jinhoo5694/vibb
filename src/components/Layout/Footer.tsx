@@ -11,28 +11,14 @@ export const Footer: React.FC = () => {
 
   const footerLinks = [
     {
-      title: '섹션',
+      title: 'ViBB에 대해',
       links: [
-        { label: '스킬', href: '/skills' },
-        { label: 'MCP', href: '/mcp' },
-        { label: '프롬프트', href: '/prompt' },
-        { label: 'AI 코딩 툴', href: '/ai-tools' },
-      ],
-    },
-    {
-      title: '리소스',
-      links: [
-        { label: 'Claude 문서', href: 'https://docs.anthropic.com' },
-        { label: 'GitHub', href: 'https://github.com/anthropics/skills' },
-        { label: '커뮤니티', href: '#' },
-      ],
-    },
-    {
-      title: '정보',
-      links: [
-        { label: '소개', href: '#' },
-        { label: '블로그', href: '#' },
-        { label: '문의하기', href: '#' },
+        { label: 'About Us', href: '/about-us' },
+        { label: '커뮤니티 가이드', href: '/community-guide' },
+        { label: '개인정보처리방침', href: '/privacy-policy' },
+        { label: '이용약관', href: '/terms-of-service' },
+        { label: 'Contact Us', href: '/contact-us' },
+        { label: '오픈소스 라이선스 고지', href: '/open-source-license' },
       ],
     },
   ];
@@ -57,7 +43,7 @@ export const Footer: React.FC = () => {
             gridTemplateColumns: {
               xs: 'repeat(1, 1fr)',
               sm: 'repeat(2, 1fr)',
-              md: 'repeat(4, 1fr)',
+              md: 'repeat(2, 1fr)',
             },
             gap: { xs: 4, md: 6 },
             mb: 6,
@@ -103,14 +89,14 @@ export const Footer: React.FC = () => {
 
           {/* Footer Links */}
           {footerLinks.map((section) => (
-            <Box key={section.title}>
+            <Box key={section.title} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
               <Typography
                 variant="subtitle1"
                 sx={{ fontWeight: 700, mb: 2, color: theme.palette.text.primary }}
               >
                 {section.title}
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: { xs: 'flex-start', sm: 'flex-end' } }}>
                 {section.links.map((link) => (
                   <MuiLink
                     key={link.label}
@@ -148,39 +134,9 @@ export const Footer: React.FC = () => {
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            © {new Date().getFullYear()} VIB Builders. All rights reserved.
+            © {new Date().getFullYear()} ViBB. All rights reserved.
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 3 }}>
-            <MuiLink
-              href="#"
-              sx={{
-                color: theme.palette.text.secondary,
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                transition: 'color 0.2s',
-                '&:hover': {
-                  color: theme.palette.primary.main,
-                },
-              }}
-            >
-              Privacy Policy
-            </MuiLink>
-            <MuiLink
-              href="#"
-              sx={{
-                color: theme.palette.text.secondary,
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                transition: 'color 0.2s',
-                '&:hover': {
-                  color: theme.palette.primary.main,
-                },
-              }}
-            >
-              Terms of Service
-            </MuiLink>
-          </Box>
         </Box>
       </Container>
     </Box>

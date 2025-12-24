@@ -6,7 +6,7 @@ import { samplePosts } from '@/data/posts';
 // Search result type
 export interface SearchResult {
   id: string;
-  type: 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post';
+  type: 'skill' | 'mcp' | 'prompt' | 'ai_tool' | 'post' | 'plugin';
   title: string;
   description: string;
   category: string;
@@ -23,6 +23,7 @@ const contentTypeInfo: Record<ContentType, { label: string; labelEn: string; ico
   prompt: { label: '프롬프트', labelEn: 'Prompt', icon: '💬', basePath: '/board' },
   ai_tool: { label: 'AI 코딩 툴', labelEn: 'AI Coding Tool', icon: '🛠️', basePath: '/board' },
   post: { label: '게시글', labelEn: 'Post', icon: '📝', basePath: '/board' },
+  plugin: { label: '플러그인', labelEn: 'Plugin', icon: '🧩', basePath: '/marketplace' },
 };
 
 // Search all content types
@@ -80,6 +81,8 @@ export async function searchAll(query: string, language: 'ko' | 'en' = 'ko'): Pr
       let href = `/board/${content.id}`;
       if (content.type === 'skill') {
         href = `/skills/skill/${content.id}`;
+      } else if (content.type === 'plugin') {
+        href = `/marketplace/plugin/${content.id}`;
       }
 
       return {
@@ -171,6 +174,8 @@ export async function quickSearch(query: string, language: 'ko' | 'en' = 'ko'): 
         let href = `/board/${content.id}`;
         if (content.type === 'skill') {
           href = `/skills/skill/${content.id}`;
+        } else if (content.type === 'plugin') {
+          href = `/marketplace/plugin/${content.id}`;
         }
 
         return {

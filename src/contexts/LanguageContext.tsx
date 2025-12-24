@@ -138,6 +138,7 @@ const translations: Record<Language, Record<string, string>> = {
     "inquiry.type.feature": "기능 제안",
     "inquiry.type.business": "비즈니스",
     "inquiry.type.account": "계정 정지/제재 문의",
+    "inquiry.emailConsent": "문의 처리 및 답변을 위해 이메일 주소를 수집하고 사용하는 것에 동의합니다.",
 
     // Feature Boxes
     "features.whatIs.title": "클로드 Skills란?",
@@ -489,6 +490,7 @@ const translations: Record<Language, Record<string, string>> = {
     "inquiry.type.feature": "Feature Suggestion",
     "inquiry.type.business": "Business",
     "inquiry.type.account": "Account Suspension/Sanction Inquiry",
+    "inquiry.emailConsent": "I agree to the collection and use of my email address for processing this inquiry and receiving a response.",
 
     // Feature Boxes
     "features.whatIs.title": "What are Claude Skills?",

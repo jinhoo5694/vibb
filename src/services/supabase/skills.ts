@@ -333,24 +333,17 @@ export async function getSkillLicense(skillId: string): Promise<License | null> 
 // View Count Functions
 // ============================================
 
-export async function incrementViewCount(skillId: string): Promise<void> {
-  const { error } = await supabase.rpc('increment_view_count', { content_id: skillId });
+export async function incrementViewCount(skillId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('increment_view_count', {
+    target_content_id: skillId
+  });
 
   if (error) {
-    // Fallback: manual increment
-    const { data: content } = await supabase
-      .from('contents')
-      .select('view_count')
-      .eq('id', skillId)
-      .single();
-
-    if (content) {
-      await supabase
-        .from('contents')
-        .update({ view_count: (content.view_count || 0) + 1 })
-        .eq('id', skillId);
-    }
+    console.error('Error incrementing view count:', error);
+    return false;
   }
+
+  return data?.counted ?? false;
 }
 
 // ============================================

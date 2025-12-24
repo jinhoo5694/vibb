@@ -15,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import { Post, categoryColors } from '@/types/post';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface PostListTableProps {
@@ -26,6 +27,7 @@ interface PostListTableProps {
 const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCategory }) => {
   const theme = useTheme();
   const { language } = useLanguage();
+  const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const formatDate = (date: Date) => {
@@ -118,47 +120,34 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
         </Box>
 
         {/* Author */}
-        {post.author.id ? (
-          <Typography
-            component={Link}
-            href={`/profile/${post.author.id}`}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            variant="caption"
-            sx={{
-              width: { xs: 60, sm: 90 },
-              flexShrink: 0,
-              color: 'text.secondary',
-              textAlign: 'center',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: '0.75rem',
-              textDecoration: 'none',
-              '&:hover': {
-                color: 'primary.main',
-                textDecoration: 'underline',
-              },
-            }}
-          >
-            {post.author.name}
-          </Typography>
-        ) : (
-          <Typography
-            variant="caption"
-            sx={{
-              width: { xs: 60, sm: 90 },
-              flexShrink: 0,
-              color: 'text.secondary',
-              textAlign: 'center',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: '0.75rem',
-            }}
-          >
-            {post.author.name}
-          </Typography>
-        )}
+        <Typography
+          component="span"
+          variant="caption"
+          onClick={(e: React.MouseEvent) => {
+            if (post.author.id) {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`/profile/${post.author.id}`);
+            }
+          }}
+          sx={{
+            width: { xs: 60, sm: 90 },
+            flexShrink: 0,
+            color: 'text.secondary',
+            textAlign: 'center',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: '0.75rem',
+            cursor: post.author.id ? 'pointer' : 'default',
+            '&:hover': post.author.id ? {
+              color: 'primary.main',
+              textDecoration: 'underline',
+            } : {},
+          }}
+        >
+          {post.author.name}
+        </Typography>
 
         {/* Date */}
         <Typography
@@ -186,7 +175,7 @@ const PostRow: React.FC<{ post: Post; showCategory: boolean }> = ({ post, showCa
               fontSize: '0.75rem',
             }}
           >
-            {post.viewCount || '-'}
+            {post.viewCount ?? 0}
           </Typography>
         )}
 

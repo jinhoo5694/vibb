@@ -43,6 +43,7 @@ import {
   Extension as ExtensionIcon,
   Hub as McpIcon,
   Person as PersonIcon,
+  Storefront as StorefrontIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -58,6 +59,7 @@ import {
 const aiExtensionSubMenu = [
   { label: '스킬', labelEn: 'Skills', href: '/skills', icon: <SkillsIcon fontSize="small" />, description: '클로드 스킬 탐색', descriptionEn: 'Browse Claude Skills' },
   { label: 'MCP', labelEn: 'MCP', href: '/mcp', icon: <McpIcon fontSize="small" />, description: 'Model Context Protocol', descriptionEn: 'Model Context Protocol' },
+  { label: '마켓플레이스', labelEn: 'Marketplace', href: '/marketplace', icon: <StorefrontIcon fontSize="small" />, description: '클로드 플러그인 탐색', descriptionEn: 'Browse Claude Plugins' },
 ];
 
 type SubMenuItem = {
@@ -188,7 +190,7 @@ export const Header: React.FC = () => {
     { label: '커뮤니티', labelEn: 'Community', href: '/board', icon: <ForumIcon /> },
     { label: 'AI 코딩 도구', labelEn: 'AI Coding Tools', href: '/ai-tools', icon: <ExploreIcon /> },
     { label: '프롬프트', labelEn: 'Prompt', href: '/prompt', icon: <ExploreIcon /> },
-    { label: 'AI 확장', labelEn: 'AI Extension', href: '/ai-extension', icon: <ExtensionIcon />, hasSubmenu: true, activePaths: ['/skills', '/mcp'] },
+    { label: 'AI 확장', labelEn: 'AI Extension', href: '/ai-extension', icon: <ExtensionIcon />, hasSubmenu: true, activePaths: ['/skills', '/mcp', '/marketplace'] },
     { label: '뉴스', labelEn: 'News', href: '/news', icon: <ExploreIcon /> },
   ];
 
