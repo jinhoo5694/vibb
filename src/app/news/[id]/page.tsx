@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -80,6 +80,7 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
 
   const [news, setNews] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const viewCountedRef = useRef(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -103,7 +104,11 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
         const newsData = await getNewsById(id);
         if (newsData) {
           setNews(newsData);
-          incrementViewCount(id);
+          // Increment view count (only once per page load)
+          if (!viewCountedRef.current) {
+            viewCountedRef.current = true;
+            incrementViewCount(id);
+          }
         }
       } catch (error) {
         console.error('Error fetching news:', error);

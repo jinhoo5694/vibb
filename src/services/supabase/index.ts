@@ -36,6 +36,7 @@ export {
   getPosts,
   getBoardPosts,
   createPost,
+  updatePost,
   votePost,
   getPostById,
   deletePost,
