@@ -31,7 +31,13 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-export const InquiryFab: React.FC = () => {
+interface InquiryFabProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+  hideFab?: boolean;
+}
+
+export const InquiryFab: React.FC<InquiryFabProps> = ({ externalOpen, onExternalClose, hideFab }) => {
   const theme = useTheme();
   const { t } = useLanguage();
   const { user, session, signInWithGoogle, signInWithGithub } = useAuth();
@@ -40,6 +46,15 @@ export const InquiryFab: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [emailConsent, setEmailConsent] = useState(false);
+
+  // Handle external open trigger
+  React.useEffect(() => {
+    if (externalOpen) {
+      setOpen(true);
+      setSuccess(false);
+      setError('');
+    }
+  }, [externalOpen]);
 
   const [formData, setFormData] = useState({
     type: 'bug_report',
@@ -63,6 +78,9 @@ export const InquiryFab: React.FC = () => {
 
   const handleClose = () => {
     setOpen(false);
+    if (onExternalClose) {
+      onExternalClose();
+    }
     if (success) {
       setFormData({
         type: 'bug_report',
@@ -126,33 +144,35 @@ export const InquiryFab: React.FC = () => {
 
   return (
     <>
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        style={{
-          position: 'fixed',
-          bottom: theme.spacing(12),
-          right: theme.spacing(4),
-          zIndex: theme.zIndex.fab || 1050,
-        }}
-      >
-        <Fab
-          color="secondary"
-          onClick={handleOpen}
-          aria-label="inquiry"
-          sx={{
-            background: 'linear-gradient(135deg, #ffc857 0%, #ff6b35 100%)',
-            boxShadow: theme.shadows[8],
-            '&:hover': {
-              background: 'linear-gradient(135deg, #ffd477 0%, #ff8a5c 100%)',
-              boxShadow: theme.shadows[12],
-            },
-            transition: 'all 0.3s ease',
+      {!hideFab && (
+        <motion.div
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          style={{
+            position: 'fixed',
+            bottom: theme.spacing(12),
+            right: theme.spacing(4),
+            zIndex: theme.zIndex.fab || 1050,
           }}
         >
-          <MailIcon sx={{ fontSize: 24, color: 'white' }} />
-        </Fab>
-      </motion.div>
+          <Fab
+            color="secondary"
+            onClick={handleOpen}
+            aria-label="inquiry"
+            sx={{
+              background: 'linear-gradient(135deg, #ffc857 0%, #ff6b35 100%)',
+              boxShadow: theme.shadows[8],
+              '&:hover': {
+                background: 'linear-gradient(135deg, #ffd477 0%, #ff8a5c 100%)',
+                boxShadow: theme.shadows[12],
+              },
+              transition: 'all 0.3s ease',
+            }}
+          >
+            <MailIcon sx={{ fontSize: 24, color: 'white' }} />
+          </Fab>
+        </motion.div>
+      )}
 
       <Dialog
         open={open}
