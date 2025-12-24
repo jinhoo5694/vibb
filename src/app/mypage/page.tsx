@@ -247,19 +247,15 @@ export default function MyPage() {
     if (!user || !profile) return;
     setSaving(true);
 
-    console.log('Saving profile for user.id:', user.id);
-    console.log('Current profile.id:', profile.id);
-
     try {
-      // Use upsert to handle both insert and update cases
-      // This also works better with some RLS configurations
+      // Use PATCH (update) instead of POST (upsert) - RLS policy only allows UPDATE
       const { data, error } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
+        .update({
           nickname: editNickname,
           bio: editBio,
         })
+        .eq('id', user.id)
         .select();
 
       if (error) {
@@ -269,7 +265,6 @@ export default function MyPage() {
         console.error('No rows updated. User ID:', user.id);
         alert(language === 'ko' ? '프로필을 찾을 수 없습니다.' : 'Profile not found.');
       } else {
-        console.log('Profile updated:', data);
         setProfile({ ...profile, nickname: editNickname, bio: editBio });
         setEditing(false);
       }
