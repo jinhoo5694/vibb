@@ -55,6 +55,7 @@ import { motion } from 'framer-motion';
 import { ReportDialog } from '@/components/Community/ReportDialog';
 import { PostNavigationList } from '@/components/Community/PostNavigationList';
 import { useExternalLink } from '@/contexts/ExternalLinkContext';
+import { useContentFilter } from '@/hooks/useContentFilter';
 
 // Parse markdown to render content with code blocks and links
 function MarkdownPreview({ content, isDark }: { content: string; isDark: boolean }) {
@@ -260,6 +261,7 @@ export default function PostDetailPage() {
   const theme = useTheme();
   const { language } = useLanguage();
   const { user } = useAuth();
+  const { validateField, isValidating: isValidatingComment } = useContentFilter();
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -603,6 +605,19 @@ export default function PostDetailPage() {
     if (!replyText.trim() || !user || submittingReply) return;
 
     setSubmittingReply(true);
+
+    // Validate content against blacklisted words
+    const validationResult = await validateField(
+      replyText.trim(),
+      language === 'ko' ? '답글' : 'Reply'
+    );
+
+    if (!validationResult.isValid) {
+      alert(validationResult.errorMessage || (language === 'ko' ? '사용할 수 없는 단어가 포함되어 있습니다.' : 'Content contains prohibited words.'));
+      setSubmittingReply(false);
+      return;
+    }
+
     try {
       const result = await addReply(user.id, commentId, replyText.trim());
       if (result) {
@@ -687,6 +702,19 @@ export default function PostDetailPage() {
     if (!newComment.trim() || !user || submittingComment) return;
 
     setSubmittingComment(true);
+
+    // Validate content against blacklisted words
+    const validationResult = await validateField(
+      newComment.trim(),
+      language === 'ko' ? '댓글' : 'Comment'
+    );
+
+    if (!validationResult.isValid) {
+      alert(validationResult.errorMessage || (language === 'ko' ? '사용할 수 없는 단어가 포함되어 있습니다.' : 'Content contains prohibited words.'));
+      setSubmittingComment(false);
+      return;
+    }
+
     try {
       const result = await addPostComment(user.id, postId, newComment.trim());
       if (result) {

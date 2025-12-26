@@ -56,8 +56,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { SubCategoryTag, subCategoryColors } from '@/types/post';
-import { createPost, updatePost, getPostById, getUserDrafts } from '@/services/supabase';
+import { createPost, updatePost, getPostById, getUserDrafts, deletePost } from '@/services/supabase';
 import { Post } from '@/types/post';
+import { useContentFilter } from '@/hooks/useContentFilter';
 
 // Language options for code blocks
 const CODE_LANGUAGES = [
@@ -230,6 +231,7 @@ export default function WritePostPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { validateMultipleFields, isValidating } = useContentFilter();
 
   // Edit mode
   const editPostId = searchParams.get('edit');
@@ -538,6 +540,18 @@ export default function WritePostPage() {
 
     setIsSubmitting(true);
 
+    // Validate content against blacklisted words
+    const validationResult = await validateMultipleFields([
+      { content: title, fieldName: language === 'ko' ? '제목' : 'Title' },
+      { content: content, fieldName: language === 'ko' ? '내용' : 'Content' },
+    ]);
+
+    if (!validationResult.isValid) {
+      alert(validationResult.errorMessage || (language === 'ko' ? '사용할 수 없는 단어가 포함되어 있습니다.' : 'Content contains prohibited words.'));
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       if (isEditMode && editPostId) {
         // Update existing post
@@ -571,6 +585,12 @@ export default function WritePostPage() {
 
         if (result) {
           clearDraft(); // Clear auto-saved draft after successful submission
+
+          // If we were editing a draft, delete it from database
+          if (draftId) {
+            await deletePost(draftId, user.id);
+          }
+
           alert(language === 'ko' ? '게시글이 등록되었습니다!' : 'Post submitted!');
           router.push('/board');
         } else {
@@ -1051,7 +1071,7 @@ export default function WritePostPage() {
             variant="contained"
             startIcon={<SendIcon />}
             onClick={handleSubmit}
-            disabled={isSubmitting || isSavingDraft || !title.trim() || !content.trim()}
+            disabled={isSubmitting || isSavingDraft || isValidating || !title.trim() || !content.trim()}
             sx={{
               px: 4,
               bgcolor: '#ff6b35',
@@ -1059,7 +1079,7 @@ export default function WritePostPage() {
               '&:disabled': { bgcolor: 'action.disabledBackground' },
             }}
           >
-            {isSubmitting
+            {isSubmitting || isValidating
               ? (language === 'ko'
                   ? (isEditMode ? '수정 중...' : '등록 중...')
                   : (isEditMode ? 'Updating...' : 'Submitting...'))

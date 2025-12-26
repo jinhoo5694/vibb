@@ -508,24 +508,39 @@ export async function getUserDrafts(userId: string): Promise<Post[]> {
 
 // Delete a post
 export async function deletePost(postId: string, userId: string, isAdmin: boolean = false): Promise<boolean> {
+  console.log('[deletePost] Starting delete:', { postId, userId, isAdmin });
+
   // Verify ownership unless admin
   if (!isAdmin) {
-    const { data: content } = await supabase
+    const { data: content, error: fetchError } = await supabase
       .from('contents')
       .select('author_id')
       .eq('id', postId)
       .single();
 
+    console.log('[deletePost] Ownership check:', { content, fetchError });
+
+    if (fetchError) {
+      console.error('[deletePost] Error fetching content:', fetchError);
+      return false;
+    }
+
     if (!content || content.author_id !== userId) {
+      console.log('[deletePost] Ownership check failed:', { author_id: content?.author_id, userId });
       return false;
     }
   }
 
-  // Delete related data first
-  await supabase.from('content_votes').delete().eq('content_id', postId);
-  await supabase.from('content_tags').delete().eq('content_id', postId);
-  await supabase.from('reviews').delete().eq('content_id', postId);
-  await supabase.from('bookmarks').delete().eq('content_id', postId);
+  // Delete related data first (ignore errors as some tables might not have entries)
+  const deleteResults = await Promise.all([
+    supabase.from('content_votes').delete().eq('content_id', postId),
+    supabase.from('content_tags').delete().eq('content_id', postId),
+    supabase.from('reviews').delete().eq('content_id', postId),
+    supabase.from('bookmarks').delete().eq('content_id', postId),
+    supabase.from('content_views').delete().eq('content_id', postId),
+  ]);
+
+  console.log('[deletePost] Related data deletion results:', deleteResults.map(r => r.error));
 
   // Delete the post
   const { error } = await supabase
@@ -533,7 +548,13 @@ export async function deletePost(postId: string, userId: string, isAdmin: boolea
     .delete()
     .eq('id', postId);
 
-  return !error;
+  if (error) {
+    console.error('[deletePost] Error deleting post:', error);
+    return false;
+  }
+
+  console.log('[deletePost] Post deleted successfully');
+  return true;
 }
 
 // ============================================
