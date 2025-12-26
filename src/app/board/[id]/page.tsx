@@ -54,10 +54,62 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { ReportDialog } from '@/components/Community/ReportDialog';
 import { PostNavigationList } from '@/components/Community/PostNavigationList';
+import { useExternalLink } from '@/contexts/ExternalLinkContext';
 
 // Parse markdown to render content with code blocks and links
 function MarkdownPreview({ content, isDark }: { content: string; isDark: boolean }) {
   const theme = useTheme();
+  const { openExternalLink } = useExternalLink();
+
+  // Helper to parse text and convert raw URLs to clickable links
+  const parseTextWithUrls = (text: string, keyStart: number): { elements: React.ReactNode[]; keyEnd: number } => {
+    const elements: React.ReactNode[] = [];
+    let key = keyStart;
+
+    // Regex to match raw URLs (not inside markdown link syntax)
+    const urlRegex = /(https?:\/\/[^\s<>[\]()]+)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Add text before the URL
+      if (match.index > lastIndex) {
+        elements.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+      }
+
+      const url = match[1];
+      elements.push(
+        <Typography
+          key={key++}
+          component="span"
+          onClick={() => {
+            console.log('[MarkdownPreview] Raw URL clicked:', url);
+            openExternalLink(url);
+          }}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            color: '#ff6b35',
+            textDecoration: 'none',
+            cursor: 'pointer',
+            '&:hover': { textDecoration: 'underline' },
+          }}
+        >
+          <LinkIcon sx={{ fontSize: 14 }} />
+          {url.length > 50 ? url.slice(0, 50) + '...' : url}
+        </Typography>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      elements.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+    }
+
+    return { elements, keyEnd: key };
+  };
 
   const parseContent = (text: string) => {
     const elements: React.ReactNode[] = [];
@@ -123,52 +175,62 @@ function MarkdownPreview({ content, isDark }: { content: string; isDark: boolean
         let textLastIndex = 0;
         let linkMatch;
 
+        // Helper to add text with raw URL parsing
+        const addTextWithUrls = (text: string) => {
+          text.split('\n').forEach((line, i, arr) => {
+            if (line.trim()) {
+              const { elements: lineElements, keyEnd } = parseTextWithUrls(line, key);
+              textElements.push(...lineElements);
+              key = keyEnd;
+            }
+            if (i < arr.length - 1) {
+              textElements.push(<br key={key++} />);
+            }
+          });
+        };
+
         const linkRegexLocal = /\[([^\]]+)\]\(([^)]+)\)/g;
         while ((linkMatch = linkRegexLocal.exec(textContent)) !== null) {
           if (linkMatch.index > textLastIndex) {
             const beforeText = textContent.slice(textLastIndex, linkMatch.index);
-            beforeText.split('\n').forEach((line, i, arr) => {
-              if (line.trim()) {
-                textElements.push(<span key={key++}>{line}</span>);
-              }
-              if (i < arr.length - 1) {
-                textElements.push(<br key={key++} />);
-              }
-            });
+            addTextWithUrls(beforeText);
           }
+          const linkUrl = linkMatch[2];
+          const linkText = linkMatch[1];
+          const isExternal = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+
           textElements.push(
-            <Box
+            <Typography
               key={key++}
-              component="a"
-              href={linkMatch[2]}
-              target="_blank"
-              rel="noopener noreferrer"
+              component="span"
+              onClick={() => {
+                console.log('[MarkdownPreview] Markdown link clicked:', linkUrl, 'isExternal:', isExternal);
+                if (isExternal) {
+                  openExternalLink(linkUrl);
+                } else {
+                  window.location.href = linkUrl;
+                }
+              }}
               sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 0.5,
                 color: '#ff6b35',
                 textDecoration: 'none',
+                cursor: 'pointer',
                 '&:hover': { textDecoration: 'underline' },
               }}
             >
               <LinkIcon sx={{ fontSize: 14 }} />
-              {linkMatch[1]}
-            </Box>
+              {linkText}
+            </Typography>
           );
           textLastIndex = linkMatch.index + linkMatch[0].length;
         }
 
         if (textLastIndex < textContent.length) {
           const remainingText = textContent.slice(textLastIndex);
-          remainingText.split('\n').forEach((line, i, arr) => {
-            if (line.trim()) {
-              textElements.push(<span key={key++}>{line}</span>);
-            }
-            if (i < arr.length - 1) {
-              textElements.push(<br key={key++} />);
-            }
-          });
+          addTextWithUrls(remainingText);
         }
 
         if (textElements.length > 0) {
@@ -188,6 +250,7 @@ function MarkdownPreview({ content, isDark }: { content: string; isDark: boolean
     return null;
   }
 
+  console.log('[MarkdownPreview] Rendering content:', content);
   return <Box>{parseContent(content)}</Box>;
 }
 

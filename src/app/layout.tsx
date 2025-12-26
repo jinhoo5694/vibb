@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ExternalLinkProvider } from "@/contexts/ExternalLinkContext";
 
 export const metadata: Metadata = {
   title: "VIB Builders - 바이브 코딩 커뮤니티",
@@ -20,7 +21,9 @@ export default function RootLayout({
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
-              {children}
+              <ExternalLinkProvider>
+                {children}
+              </ExternalLinkProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
