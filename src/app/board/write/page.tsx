@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+// LocalStorage key for auto-save
+const AUTOSAVE_KEY = 'vibb_post_draft';
 import {
   Container,
   Box,
@@ -22,6 +25,11 @@ import {
   ToggleButtonGroup,
   Tooltip,
   InputBase,
+  Alert,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -34,6 +42,10 @@ import {
   Edit as EditIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
+  CloudDone as CloudDoneIcon,
+  DeleteOutline as DeleteOutlineIcon,
+  SaveOutlined as SaveIcon,
+  Drafts as DraftsIcon,
 } from '@mui/icons-material';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -44,7 +56,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { SubCategoryTag, subCategoryColors } from '@/types/post';
-import { createPost, updatePost, getPostById } from '@/services/supabase';
+import { createPost, updatePost, getPostById, getUserDrafts, deletePost } from '@/services/supabase';
+import { Post } from '@/types/post';
+import { useContentFilter } from '@/hooks/useContentFilter';
 
 // Language options for code blocks
 const CODE_LANGUAGES = [
@@ -217,6 +231,7 @@ export default function WritePostPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { validateMultipleFields, isValidating } = useContentFilter();
 
   // Edit mode
   const editPostId = searchParams.get('edit');
@@ -229,6 +244,15 @@ export default function WritePostPage() {
   const [showGuidelines, setShowGuidelines] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null); // Track if editing a draft
+  const [userDrafts, setUserDrafts] = useState<Post[]>([]); // User's saved drafts
+  const [showDraftsNotice, setShowDraftsNotice] = useState(false);
+
+  // Auto-save state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+  const isInitialMount = useRef(true);
 
   // Load post data when editing
   useEffect(() => {
@@ -252,6 +276,171 @@ export default function WritePostPage() {
 
     loadPostForEdit();
   }, [editPostId]);
+
+  // Load user's drafts on mount (only for new posts)
+  useEffect(() => {
+    async function loadUserDrafts() {
+      if (!user || isEditMode) return;
+
+      try {
+        const drafts = await getUserDrafts(user.id);
+        if (drafts.length > 0) {
+          setUserDrafts(drafts);
+          setShowDraftsNotice(true);
+        }
+      } catch (error) {
+        console.error('Error loading user drafts:', error);
+      }
+    }
+
+    loadUserDrafts();
+  }, [user, isEditMode]);
+
+  // Restore from localStorage on mount (only for new posts, not edit mode)
+  useEffect(() => {
+    if (isEditMode) return;
+
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.title || draft.content) {
+          setTitle(draft.title || '');
+          setContent(draft.content || '');
+          setSelectedTags(draft.tags || []);
+          setRestoredFromDraft(true);
+          setLastSaved(new Date(draft.savedAt));
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring draft:', error);
+    }
+  }, [isEditMode]);
+
+  // Auto-save to localStorage (debounced, only for new posts)
+  useEffect(() => {
+    if (isEditMode) return;
+
+    // Skip the initial mount to avoid saving empty content
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Don't save if all fields are empty
+    if (!title.trim() && !content.trim() && selectedTags.length === 0) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      try {
+        const draft = {
+          title,
+          content,
+          tags: selectedTags,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Error saving draft:', error);
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [title, content, selectedTags, isEditMode]);
+
+  // Clear localStorage after successful post creation
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      setLastSaved(null);
+      setRestoredFromDraft(false);
+    } catch (error) {
+      console.error('Error clearing draft:', error);
+    }
+  }, []);
+
+  // Load a draft to continue editing
+  const loadDraft = useCallback((draft: Post) => {
+    setTitle(draft.title);
+    setContent(draft.content);
+    setSelectedTags(draft.tags as SubCategoryTag[] || []);
+    setDraftId(draft.id);
+    setShowDraftsNotice(false);
+    clearDraft(); // Clear localStorage since we're loading from database
+  }, [clearDraft]);
+
+  // Handle save draft to database
+  const handleSaveDraft = async () => {
+    if (!user) {
+      alert(language === 'ko' ? '로그인이 필요합니다.' : 'Login required.');
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      // For drafts, only include fields that have content
+      const draftData: {
+        title: string;
+        body?: string;
+        type: string;
+        tags?: string[];
+        metadata?: Record<string, unknown>;
+        status: 'draft';
+      } = {
+        title: title.trim(),
+        type: 'post',
+        status: 'draft',
+      };
+
+      // Only include body if there's content
+      if (content.trim()) {
+        draftData.body = content;
+      }
+
+      // Only include tags/metadata if there are selected tags
+      if (selectedTags.length > 0) {
+        draftData.tags = [...selectedTags];
+        draftData.metadata = { selectedTags };
+      }
+
+      if (draftId || (isEditMode && editPostId)) {
+        // Update existing draft
+        const idToUpdate = draftId || editPostId;
+        const success = await updatePost(idToUpdate!, user.id, {
+          title: draftData.title,
+          body: draftData.body,
+          metadata: draftData.metadata,
+          status: 'draft',
+        });
+
+        if (success) {
+          clearDraft(); // Clear localStorage since we saved to database
+          alert(language === 'ko' ? '임시 저장되었습니다.' : 'Draft saved.');
+        } else {
+          throw new Error('Failed to save draft');
+        }
+      } else {
+        // Create new draft
+        const result = await createPost(user.id, draftData);
+
+        if (result) {
+          setDraftId(result.id); // Track the draft ID for future saves
+          clearDraft(); // Clear localStorage since we saved to database
+          alert(language === 'ko' ? '임시 저장되었습니다.' : 'Draft saved.');
+        } else {
+          throw new Error('Failed to create draft');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      alert(language === 'ko' ? '임시 저장에 실패했습니다.' : 'Failed to save draft.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   // Editor mode: 'edit' or 'preview'
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit');
@@ -351,6 +540,18 @@ export default function WritePostPage() {
 
     setIsSubmitting(true);
 
+    // Validate content against blacklisted words
+    const validationResult = await validateMultipleFields([
+      { content: title, fieldName: language === 'ko' ? '제목' : 'Title' },
+      { content: content, fieldName: language === 'ko' ? '내용' : 'Content' },
+    ]);
+
+    if (!validationResult.isValid) {
+      alert(validationResult.errorMessage || (language === 'ko' ? '사용할 수 없는 단어가 포함되어 있습니다.' : 'Content contains prohibited words.'));
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       if (isEditMode && editPostId) {
         // Update existing post
@@ -383,6 +584,13 @@ export default function WritePostPage() {
         });
 
         if (result) {
+          clearDraft(); // Clear auto-saved draft after successful submission
+
+          // If we were editing a draft, delete it from database
+          if (draftId) {
+            await deletePost(draftId, user.id);
+          }
+
           alert(language === 'ko' ? '게시글이 등록되었습니다!' : 'Post submitted!');
           router.push('/board');
         } else {
@@ -404,6 +612,22 @@ export default function WritePostPage() {
   const totalCharCount = content.length;
   const isDark = theme.palette.mode === 'dark';
 
+  // Format time for auto-save indicator
+  const formatSavedTime = useMemo(() => {
+    if (!lastSaved) return null;
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastSaved.getTime()) / 1000);
+    if (diff < 60) return language === 'ko' ? '방금 전 저장됨' : 'Saved just now';
+    if (diff < 3600) {
+      const mins = Math.floor(diff / 60);
+      return language === 'ko' ? `${mins}분 전 저장됨` : `Saved ${mins}m ago`;
+    }
+    return lastSaved.toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [lastSaved, language]);
+
   return (
     <>
       <Header />
@@ -418,22 +642,60 @@ export default function WritePostPage() {
           {language === 'ko' ? '돌아가기' : 'Go Back'}
         </Button>
 
-        {/* Page Title */}
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 4,
-            background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
-          {isEditMode
-            ? (language === 'ko' ? '글 수정' : 'Edit Post')
-            : (language === 'ko' ? '새 글 작성' : 'Write New Post')}
-        </Typography>
+        {/* Page Title with Auto-save indicator */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {isEditMode
+              ? (language === 'ko' ? '글 수정' : 'Edit Post')
+              : (language === 'ko' ? '새 글 작성' : 'Write New Post')}
+          </Typography>
+
+          {/* Auto-save indicator (only for new posts) */}
+          {!isEditMode && (lastSaved || restoredFromDraft) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {formatSavedTime && (
+                <Chip
+                  icon={<CloudDoneIcon sx={{ fontSize: 16 }} />}
+                  label={formatSavedTime}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    color: 'text.secondary',
+                    borderColor: 'divider',
+                    fontSize: '0.75rem',
+                  }}
+                />
+              )}
+              {restoredFromDraft && (
+                <Tooltip title={language === 'ko' ? '임시 저장된 글을 삭제합니다' : 'Discard saved draft'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      if (confirm(language === 'ko' ? '임시 저장된 글을 삭제하시겠습니까?' : 'Discard saved draft?')) {
+                        clearDraft();
+                        setTitle('');
+                        setContent('');
+                        setSelectedTags([]);
+                      }
+                    }}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          )}
+        </Box>
 
         {/* Community Guidelines */}
         <Paper
@@ -512,6 +774,66 @@ export default function WritePostPage() {
             </Box>
           </Collapse>
         </Paper>
+
+        {/* Saved Drafts Notice */}
+        {showDraftsNotice && userDrafts.length > 0 && !isEditMode && (
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Alert
+              icon={<DraftsIcon />}
+              severity="info"
+              onClose={() => setShowDraftsNotice(false)}
+              sx={{
+                '& .MuiAlert-message': { width: '100%' },
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {language === 'ko'
+                  ? `임시 저장된 글이 ${userDrafts.length}개 있습니다`
+                  : `You have ${userDrafts.length} saved draft${userDrafts.length > 1 ? 's' : ''}`}
+              </Typography>
+              <List dense disablePadding sx={{ mt: 1 }}>
+                {userDrafts.slice(0, 3).map((draft) => (
+                  <ListItem key={draft.id} disablePadding>
+                    <ListItemButton
+                      onClick={() => loadDraft(draft)}
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        borderRadius: 1,
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.05)' },
+                      }}
+                    >
+                      <ListItemText
+                        primary={draft.title || (language === 'ko' ? '(제목 없음)' : '(No title)')}
+                        secondary={new Date(draft.createdAt).toLocaleDateString(
+                          language === 'ko' ? 'ko-KR' : 'en-US',
+                          { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                        )}
+                        primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                        secondaryTypographyProps={{ variant: 'caption' }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+              {userDrafts.length > 3 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {language === 'ko'
+                    ? `외 ${userDrafts.length - 3}개...`
+                    : `and ${userDrafts.length - 3} more...`}
+                </Typography>
+              )}
+            </Alert>
+          </Paper>
+        )}
 
         {/* Editor */}
         <Paper
@@ -725,16 +1047,31 @@ export default function WritePostPage() {
           </Box>
         </Paper>
 
-        {/* Submit Button */}
+        {/* Submit Buttons */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           <Button variant="outlined" onClick={() => router.back()} sx={{ px: 4 }}>
             {language === 'ko' ? '취소' : 'Cancel'}
           </Button>
           <Button
+            variant="outlined"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || isSubmitting || (!title.trim() && !content.trim())}
+            sx={{
+              px: 3,
+              borderColor: 'divider',
+              '&:hover': { borderColor: '#ff6b35', color: '#ff6b35' },
+            }}
+          >
+            {isSavingDraft
+              ? (language === 'ko' ? '저장 중...' : 'Saving...')
+              : (language === 'ko' ? '임시 저장' : 'Save Draft')}
+          </Button>
+          <Button
             variant="contained"
             startIcon={<SendIcon />}
             onClick={handleSubmit}
-            disabled={isSubmitting || !title.trim() || !content.trim()}
+            disabled={isSubmitting || isSavingDraft || isValidating || !title.trim() || !content.trim()}
             sx={{
               px: 4,
               bgcolor: '#ff6b35',
@@ -742,7 +1079,7 @@ export default function WritePostPage() {
               '&:disabled': { bgcolor: 'action.disabledBackground' },
             }}
           >
-            {isSubmitting
+            {isSubmitting || isValidating
               ? (language === 'ko'
                   ? (isEditMode ? '수정 중...' : '등록 중...')
                   : (isEditMode ? 'Updating...' : 'Submitting...'))

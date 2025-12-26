@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Send as SendIcon, Cancel as CancelIcon, Star as StarIcon } from '@mui/icons-material';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useContentFilter } from '@/hooks/useContentFilter';
 
 interface CommentFormProps {
   onSubmit: (content: string, rating?: number | null) => Promise<void>;
@@ -30,7 +31,8 @@ export const CommentForm: React.FC<CommentFormProps> = ({
   isReply = false,
   placeholder,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { validateField, isValidating } = useContentFilter();
   const [content, setContent] = useState(initialValue);
   const [rating, setRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +59,18 @@ export const CommentForm: React.FC<CommentFormProps> = ({
 
     setIsSubmitting(true);
     setError(null);
+
+    // Validate content against blacklisted words
+    const validationResult = await validateField(
+      content.trim(),
+      language === 'ko' ? '댓글' : 'Comment'
+    );
+
+    if (!validationResult.isValid) {
+      setError(validationResult.errorMessage || (language === 'ko' ? '사용할 수 없는 단어가 포함되어 있습니다.' : 'Content contains prohibited words.'));
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await onSubmit(content.trim(), isReply ? null : rating);
@@ -131,8 +145,8 @@ export const CommentForm: React.FC<CommentFormProps> = ({
         <Button
           type="submit"
           variant="contained"
-          disabled={isSubmitting || !content.trim() || (!isReply && !isEditing && !rating)}
-          startIcon={isSubmitting ? <CircularProgress size={20} /> : <SendIcon />}
+          disabled={isSubmitting || isValidating || !content.trim() || (!isReply && !isEditing && !rating)}
+          startIcon={(isSubmitting || isValidating) ? <CircularProgress size={20} /> : <SendIcon />}
         >
           {isEditing ? t('comments.form.update') : isReply ? t('comments.form.reply') : t('comments.form.submit')}
         </Button>

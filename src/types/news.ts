@@ -2,7 +2,7 @@
 
 export type NewsCategory = 'AI' | '개발' | '스타트업' | '트렌드' | '튜토리얼';
 
-export type ContentStatus = 'pending' | 'published' | 'archived';
+export type ContentStatus = 'draft' | 'pending' | 'published' | 'archived';
 
 // Database row type matching contents table
 export interface NewsRow {

@@ -130,7 +130,8 @@ export async function getPosts(
         tag_id,
         tags:tag_id (id, name)
       )
-    `);
+    `)
+    .in('content_status', ['pending', 'published']); // Only show pending/published posts, exclude drafts
 
   // Filter by content type if specified
   if (contentType && contentType !== 'all') {
@@ -160,6 +161,9 @@ export async function getPosts(
     console.error('Error fetching posts:', error);
     return [];
   }
+
+  // Debug: log content_status values
+  console.log('[getPosts] Fetched posts content_status values:', contents.map(c => ({ id: c.id, title: c.title, content_status: c.content_status })));
 
   // Get reviews count for each content
   const contentIds = contents.map(c => c.id);
@@ -229,24 +233,40 @@ export async function getBoardPosts(
   return getPosts(contentType, options);
 }
 
-// Create a new post
+// Create a new post (or draft)
 export async function createPost(
   userId: string,
   data: {
     title: string;
-    body: string;
+    body?: string;
     type: string;
     tags?: string[];
     metadata?: Record<string, unknown>;
+    status?: 'draft' | 'pending';
   }
 ): Promise<Content | null> {
-  const insertData = {
+  const isDraft = data.status === 'draft';
+
+  // For drafts, only set required fields (type, title, view_count, content_status)
+  // Other fields can be null
+  const insertData: Record<string, unknown> = {
     author_id: userId,
     type: data.type,
-    title: data.title,
-    body: data.body,
-    metadata: data.metadata || {},
+    title: data.title || '(제목 없음)',
+    content_status: data.status || 'pending',
   };
+
+  // Only include body and metadata for non-draft posts
+  if (!isDraft) {
+    insertData.body = data.body || '';
+    insertData.metadata = data.metadata || {};
+  } else {
+    // For drafts, only include if there's actual content
+    if (data.body) insertData.body = data.body;
+    if (data.metadata && Object.keys(data.metadata).length > 0) {
+      insertData.metadata = data.metadata;
+    }
+  }
 
   console.log('[createPost] Sending request with data:', {
     userId,
@@ -377,14 +397,15 @@ export async function getPostById(postId: string): Promise<Post | null> {
   return contentToPost(contentWithRelations);
 }
 
-// Update an existing post
+// Update an existing post (or draft)
 export async function updatePost(
   postId: string,
   userId: string,
   data: {
-    title: string;
-    body: string;
+    title?: string;
+    body?: string;
     metadata?: Record<string, unknown>;
+    status?: 'draft' | 'pending';
   }
 ): Promise<boolean> {
   // Verify ownership
@@ -399,13 +420,34 @@ export async function updatePost(
     return false;
   }
 
+  const isDraft = data.status === 'draft';
+  const updateData: Record<string, unknown> = {};
+
+  // Always update title if provided
+  if (data.title !== undefined) {
+    updateData.title = data.title || '(제목 없음)';
+  }
+
+  // For drafts, only include body/metadata if they have content
+  // For regular posts, always include them
+  if (!isDraft) {
+    if (data.body !== undefined) updateData.body = data.body;
+    if (data.metadata !== undefined) updateData.metadata = data.metadata || {};
+  } else {
+    if (data.body) updateData.body = data.body;
+    if (data.metadata && Object.keys(data.metadata).length > 0) {
+      updateData.metadata = data.metadata;
+    }
+  }
+
+  // Update status if provided
+  if (data.status) {
+    updateData.content_status = data.status;
+  }
+
   const { error } = await supabase
     .from('contents')
-    .update({
-      title: data.title,
-      body: data.body,
-      metadata: data.metadata || {},
-    })
+    .update(updateData)
     .eq('id', postId);
 
   if (error) {
@@ -417,26 +459,88 @@ export async function updatePost(
   return true;
 }
 
+// Get user's draft posts
+export async function getUserDrafts(userId: string): Promise<Post[]> {
+  if (isDebugMode()) {
+    return [];
+  }
+
+  const { data: contents, error } = await supabase
+    .from('contents')
+    .select(`
+      *,
+      author:author_id (id, nickname, avatar_url, email),
+      content_tags (
+        tag_id,
+        tags:tag_id (id, name)
+      )
+    `)
+    .eq('author_id', userId)
+    .eq('content_status', 'draft')
+    .eq('type', 'post')
+    .order('created_at', { ascending: false });
+
+  if (error || !contents) {
+    console.error('Error fetching drafts:', error);
+    return [];
+  }
+
+  return contents.map((content) => {
+    const tags = content.content_tags
+      ?.map((ct: { tags: Tag | Tag[] | null }) => {
+        if (Array.isArray(ct.tags)) return ct.tags[0];
+        return ct.tags;
+      })
+      .filter((t: Tag | null): t is Tag => t !== null) || [];
+
+    const contentWithRelations: ContentWithRelations = {
+      ...content,
+      author: content.author as Profile | null,
+      tags,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
+      reviews_count: 0,
+    };
+
+    return contentToPost(contentWithRelations);
+  });
+}
+
 // Delete a post
 export async function deletePost(postId: string, userId: string, isAdmin: boolean = false): Promise<boolean> {
+  console.log('[deletePost] Starting delete:', { postId, userId, isAdmin });
+
   // Verify ownership unless admin
   if (!isAdmin) {
-    const { data: content } = await supabase
+    const { data: content, error: fetchError } = await supabase
       .from('contents')
       .select('author_id')
       .eq('id', postId)
       .single();
 
+    console.log('[deletePost] Ownership check:', { content, fetchError });
+
+    if (fetchError) {
+      console.error('[deletePost] Error fetching content:', fetchError);
+      return false;
+    }
+
     if (!content || content.author_id !== userId) {
+      console.log('[deletePost] Ownership check failed:', { author_id: content?.author_id, userId });
       return false;
     }
   }
 
-  // Delete related data first
-  await supabase.from('content_votes').delete().eq('content_id', postId);
-  await supabase.from('content_tags').delete().eq('content_id', postId);
-  await supabase.from('reviews').delete().eq('content_id', postId);
-  await supabase.from('bookmarks').delete().eq('content_id', postId);
+  // Delete related data first (ignore errors as some tables might not have entries)
+  const deleteResults = await Promise.all([
+    supabase.from('content_votes').delete().eq('content_id', postId),
+    supabase.from('content_tags').delete().eq('content_id', postId),
+    supabase.from('reviews').delete().eq('content_id', postId),
+    supabase.from('bookmarks').delete().eq('content_id', postId),
+    supabase.from('content_views').delete().eq('content_id', postId),
+  ]);
+
+  console.log('[deletePost] Related data deletion results:', deleteResults.map(r => r.error));
 
   // Delete the post
   const { error } = await supabase
@@ -444,7 +548,13 @@ export async function deletePost(postId: string, userId: string, isAdmin: boolea
     .delete()
     .eq('id', postId);
 
-  return !error;
+  if (error) {
+    console.error('[deletePost] Error deleting post:', error);
+    return false;
+  }
+
+  console.log('[deletePost] Post deleted successfully');
+  return true;
 }
 
 // ============================================
@@ -636,7 +746,8 @@ export async function getPostsByTag(
         tags:tag_id (id, name)
       )
     `)
-    .in('id', contentIds);
+    .in('id', contentIds)
+    .in('content_status', ['pending', 'published']); // Only show pending/published posts, exclude drafts
 
   // Apply sorting
   switch (sortBy) {

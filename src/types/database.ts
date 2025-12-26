@@ -4,7 +4,7 @@
 export type ContentType = 'skill' | 'mcp' | 'prompt' | 'post' | 'ai_tool' | 'plugin';
 
 // Content status enum (matches USER-DEFINED type in database)
-export type ContentStatus = 'pending' | 'published' | 'blocked';
+export type ContentStatus = 'draft' | 'pending' | 'published' | 'blocked';
 
 // App role enum (matches USER-DEFINED type in database)
 export type AppRole = 'user' | 'admin' | 'withdrawal';
