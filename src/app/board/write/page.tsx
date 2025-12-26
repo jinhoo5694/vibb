@@ -25,6 +25,11 @@ import {
   ToggleButtonGroup,
   Tooltip,
   InputBase,
+  Alert,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -39,6 +44,8 @@ import {
   Close as CloseIcon,
   CloudDone as CloudDoneIcon,
   DeleteOutline as DeleteOutlineIcon,
+  SaveOutlined as SaveIcon,
+  Drafts as DraftsIcon,
 } from '@mui/icons-material';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -49,7 +56,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { SubCategoryTag, subCategoryColors } from '@/types/post';
-import { createPost, updatePost, getPostById } from '@/services/supabase';
+import { createPost, updatePost, getPostById, getUserDrafts } from '@/services/supabase';
+import { Post } from '@/types/post';
 
 // Language options for code blocks
 const CODE_LANGUAGES = [
@@ -234,6 +242,10 @@ export default function WritePostPage() {
   const [showGuidelines, setShowGuidelines] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null); // Track if editing a draft
+  const [userDrafts, setUserDrafts] = useState<Post[]>([]); // User's saved drafts
+  const [showDraftsNotice, setShowDraftsNotice] = useState(false);
 
   // Auto-save state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -262,6 +274,25 @@ export default function WritePostPage() {
 
     loadPostForEdit();
   }, [editPostId]);
+
+  // Load user's drafts on mount (only for new posts)
+  useEffect(() => {
+    async function loadUserDrafts() {
+      if (!user || isEditMode) return;
+
+      try {
+        const drafts = await getUserDrafts(user.id);
+        if (drafts.length > 0) {
+          setUserDrafts(drafts);
+          setShowDraftsNotice(true);
+        }
+      } catch (error) {
+        console.error('Error loading user drafts:', error);
+      }
+    }
+
+    loadUserDrafts();
+  }, [user, isEditMode]);
 
   // Restore from localStorage on mount (only for new posts, not edit mode)
   useEffect(() => {
@@ -327,6 +358,87 @@ export default function WritePostPage() {
       console.error('Error clearing draft:', error);
     }
   }, []);
+
+  // Load a draft to continue editing
+  const loadDraft = useCallback((draft: Post) => {
+    setTitle(draft.title);
+    setContent(draft.content);
+    setSelectedTags(draft.tags as SubCategoryTag[] || []);
+    setDraftId(draft.id);
+    setShowDraftsNotice(false);
+    clearDraft(); // Clear localStorage since we're loading from database
+  }, [clearDraft]);
+
+  // Handle save draft to database
+  const handleSaveDraft = async () => {
+    if (!user) {
+      alert(language === 'ko' ? '로그인이 필요합니다.' : 'Login required.');
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      // For drafts, only include fields that have content
+      const draftData: {
+        title: string;
+        body?: string;
+        type: string;
+        tags?: string[];
+        metadata?: Record<string, unknown>;
+        status: 'draft';
+      } = {
+        title: title.trim(),
+        type: 'post',
+        status: 'draft',
+      };
+
+      // Only include body if there's content
+      if (content.trim()) {
+        draftData.body = content;
+      }
+
+      // Only include tags/metadata if there are selected tags
+      if (selectedTags.length > 0) {
+        draftData.tags = [...selectedTags];
+        draftData.metadata = { selectedTags };
+      }
+
+      if (draftId || (isEditMode && editPostId)) {
+        // Update existing draft
+        const idToUpdate = draftId || editPostId;
+        const success = await updatePost(idToUpdate!, user.id, {
+          title: draftData.title,
+          body: draftData.body,
+          metadata: draftData.metadata,
+          status: 'draft',
+        });
+
+        if (success) {
+          clearDraft(); // Clear localStorage since we saved to database
+          alert(language === 'ko' ? '임시 저장되었습니다.' : 'Draft saved.');
+        } else {
+          throw new Error('Failed to save draft');
+        }
+      } else {
+        // Create new draft
+        const result = await createPost(user.id, draftData);
+
+        if (result) {
+          setDraftId(result.id); // Track the draft ID for future saves
+          clearDraft(); // Clear localStorage since we saved to database
+          alert(language === 'ko' ? '임시 저장되었습니다.' : 'Draft saved.');
+        } else {
+          throw new Error('Failed to create draft');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      alert(language === 'ko' ? '임시 저장에 실패했습니다.' : 'Failed to save draft.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   // Editor mode: 'edit' or 'preview'
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit');
@@ -643,6 +755,66 @@ export default function WritePostPage() {
           </Collapse>
         </Paper>
 
+        {/* Saved Drafts Notice */}
+        {showDraftsNotice && userDrafts.length > 0 && !isEditMode && (
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Alert
+              icon={<DraftsIcon />}
+              severity="info"
+              onClose={() => setShowDraftsNotice(false)}
+              sx={{
+                '& .MuiAlert-message': { width: '100%' },
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {language === 'ko'
+                  ? `임시 저장된 글이 ${userDrafts.length}개 있습니다`
+                  : `You have ${userDrafts.length} saved draft${userDrafts.length > 1 ? 's' : ''}`}
+              </Typography>
+              <List dense disablePadding sx={{ mt: 1 }}>
+                {userDrafts.slice(0, 3).map((draft) => (
+                  <ListItem key={draft.id} disablePadding>
+                    <ListItemButton
+                      onClick={() => loadDraft(draft)}
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        borderRadius: 1,
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.05)' },
+                      }}
+                    >
+                      <ListItemText
+                        primary={draft.title || (language === 'ko' ? '(제목 없음)' : '(No title)')}
+                        secondary={new Date(draft.createdAt).toLocaleDateString(
+                          language === 'ko' ? 'ko-KR' : 'en-US',
+                          { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                        )}
+                        primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                        secondaryTypographyProps={{ variant: 'caption' }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+              {userDrafts.length > 3 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {language === 'ko'
+                    ? `외 ${userDrafts.length - 3}개...`
+                    : `and ${userDrafts.length - 3} more...`}
+                </Typography>
+              )}
+            </Alert>
+          </Paper>
+        )}
+
         {/* Editor */}
         <Paper
           elevation={0}
@@ -855,16 +1027,31 @@ export default function WritePostPage() {
           </Box>
         </Paper>
 
-        {/* Submit Button */}
+        {/* Submit Buttons */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           <Button variant="outlined" onClick={() => router.back()} sx={{ px: 4 }}>
             {language === 'ko' ? '취소' : 'Cancel'}
           </Button>
           <Button
+            variant="outlined"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || isSubmitting || (!title.trim() && !content.trim())}
+            sx={{
+              px: 3,
+              borderColor: 'divider',
+              '&:hover': { borderColor: '#ff6b35', color: '#ff6b35' },
+            }}
+          >
+            {isSavingDraft
+              ? (language === 'ko' ? '저장 중...' : 'Saving...')
+              : (language === 'ko' ? '임시 저장' : 'Save Draft')}
+          </Button>
+          <Button
             variant="contained"
             startIcon={<SendIcon />}
             onClick={handleSubmit}
-            disabled={isSubmitting || !title.trim() || !content.trim()}
+            disabled={isSubmitting || isSavingDraft || !title.trim() || !content.trim()}
             sx={{
               px: 4,
               bgcolor: '#ff6b35',

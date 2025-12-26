@@ -130,7 +130,8 @@ export async function getPosts(
         tag_id,
         tags:tag_id (id, name)
       )
-    `);
+    `)
+    .in('content_status', ['pending', 'published']); // Only show pending/published posts, exclude drafts
 
   // Filter by content type if specified
   if (contentType && contentType !== 'all') {
@@ -160,6 +161,9 @@ export async function getPosts(
     console.error('Error fetching posts:', error);
     return [];
   }
+
+  // Debug: log content_status values
+  console.log('[getPosts] Fetched posts content_status values:', contents.map(c => ({ id: c.id, title: c.title, content_status: c.content_status })));
 
   // Get reviews count for each content
   const contentIds = contents.map(c => c.id);
@@ -229,24 +233,40 @@ export async function getBoardPosts(
   return getPosts(contentType, options);
 }
 
-// Create a new post
+// Create a new post (or draft)
 export async function createPost(
   userId: string,
   data: {
     title: string;
-    body: string;
+    body?: string;
     type: string;
     tags?: string[];
     metadata?: Record<string, unknown>;
+    status?: 'draft' | 'pending';
   }
 ): Promise<Content | null> {
-  const insertData = {
+  const isDraft = data.status === 'draft';
+
+  // For drafts, only set required fields (type, title, view_count, content_status)
+  // Other fields can be null
+  const insertData: Record<string, unknown> = {
     author_id: userId,
     type: data.type,
-    title: data.title,
-    body: data.body,
-    metadata: data.metadata || {},
+    title: data.title || '(제목 없음)',
+    content_status: data.status || 'pending',
   };
+
+  // Only include body and metadata for non-draft posts
+  if (!isDraft) {
+    insertData.body = data.body || '';
+    insertData.metadata = data.metadata || {};
+  } else {
+    // For drafts, only include if there's actual content
+    if (data.body) insertData.body = data.body;
+    if (data.metadata && Object.keys(data.metadata).length > 0) {
+      insertData.metadata = data.metadata;
+    }
+  }
 
   console.log('[createPost] Sending request with data:', {
     userId,
@@ -377,14 +397,15 @@ export async function getPostById(postId: string): Promise<Post | null> {
   return contentToPost(contentWithRelations);
 }
 
-// Update an existing post
+// Update an existing post (or draft)
 export async function updatePost(
   postId: string,
   userId: string,
   data: {
-    title: string;
-    body: string;
+    title?: string;
+    body?: string;
     metadata?: Record<string, unknown>;
+    status?: 'draft' | 'pending';
   }
 ): Promise<boolean> {
   // Verify ownership
@@ -399,13 +420,34 @@ export async function updatePost(
     return false;
   }
 
+  const isDraft = data.status === 'draft';
+  const updateData: Record<string, unknown> = {};
+
+  // Always update title if provided
+  if (data.title !== undefined) {
+    updateData.title = data.title || '(제목 없음)';
+  }
+
+  // For drafts, only include body/metadata if they have content
+  // For regular posts, always include them
+  if (!isDraft) {
+    if (data.body !== undefined) updateData.body = data.body;
+    if (data.metadata !== undefined) updateData.metadata = data.metadata || {};
+  } else {
+    if (data.body) updateData.body = data.body;
+    if (data.metadata && Object.keys(data.metadata).length > 0) {
+      updateData.metadata = data.metadata;
+    }
+  }
+
+  // Update status if provided
+  if (data.status) {
+    updateData.content_status = data.status;
+  }
+
   const { error } = await supabase
     .from('contents')
-    .update({
-      title: data.title,
-      body: data.body,
-      metadata: data.metadata || {},
-    })
+    .update(updateData)
     .eq('id', postId);
 
   if (error) {
@@ -415,6 +457,53 @@ export async function updatePost(
 
   console.log('[updatePost] Post updated successfully');
   return true;
+}
+
+// Get user's draft posts
+export async function getUserDrafts(userId: string): Promise<Post[]> {
+  if (isDebugMode()) {
+    return [];
+  }
+
+  const { data: contents, error } = await supabase
+    .from('contents')
+    .select(`
+      *,
+      author:author_id (id, nickname, avatar_url, email),
+      content_tags (
+        tag_id,
+        tags:tag_id (id, name)
+      )
+    `)
+    .eq('author_id', userId)
+    .eq('content_status', 'draft')
+    .eq('type', 'post')
+    .order('created_at', { ascending: false });
+
+  if (error || !contents) {
+    console.error('Error fetching drafts:', error);
+    return [];
+  }
+
+  return contents.map((content) => {
+    const tags = content.content_tags
+      ?.map((ct: { tags: Tag | Tag[] | null }) => {
+        if (Array.isArray(ct.tags)) return ct.tags[0];
+        return ct.tags;
+      })
+      .filter((t: Tag | null): t is Tag => t !== null) || [];
+
+    const contentWithRelations: ContentWithRelations = {
+      ...content,
+      author: content.author as Profile | null,
+      tags,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
+      reviews_count: 0,
+    };
+
+    return contentToPost(contentWithRelations);
+  });
 }
 
 // Delete a post
@@ -636,7 +725,8 @@ export async function getPostsByTag(
         tags:tag_id (id, name)
       )
     `)
-    .in('id', contentIds);
+    .in('id', contentIds)
+    .in('content_status', ['pending', 'published']); // Only show pending/published posts, exclude drafts
 
   // Apply sorting
   switch (sortBy) {
