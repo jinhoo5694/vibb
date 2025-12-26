@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+// LocalStorage key for auto-save
+const AUTOSAVE_KEY = 'vibb_post_draft';
 import {
   Container,
   Box,
@@ -34,6 +37,8 @@ import {
   Edit as EditIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
+  CloudDone as CloudDoneIcon,
+  DeleteOutline as DeleteOutlineIcon,
 } from '@mui/icons-material';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -230,6 +235,11 @@ export default function WritePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-save state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+  const isInitialMount = useRef(true);
+
   // Load post data when editing
   useEffect(() => {
     async function loadPostForEdit() {
@@ -252,6 +262,71 @@ export default function WritePostPage() {
 
     loadPostForEdit();
   }, [editPostId]);
+
+  // Restore from localStorage on mount (only for new posts, not edit mode)
+  useEffect(() => {
+    if (isEditMode) return;
+
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.title || draft.content) {
+          setTitle(draft.title || '');
+          setContent(draft.content || '');
+          setSelectedTags(draft.tags || []);
+          setRestoredFromDraft(true);
+          setLastSaved(new Date(draft.savedAt));
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring draft:', error);
+    }
+  }, [isEditMode]);
+
+  // Auto-save to localStorage (debounced, only for new posts)
+  useEffect(() => {
+    if (isEditMode) return;
+
+    // Skip the initial mount to avoid saving empty content
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Don't save if all fields are empty
+    if (!title.trim() && !content.trim() && selectedTags.length === 0) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      try {
+        const draft = {
+          title,
+          content,
+          tags: selectedTags,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Error saving draft:', error);
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [title, content, selectedTags, isEditMode]);
+
+  // Clear localStorage after successful post creation
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      setLastSaved(null);
+      setRestoredFromDraft(false);
+    } catch (error) {
+      console.error('Error clearing draft:', error);
+    }
+  }, []);
 
   // Editor mode: 'edit' or 'preview'
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit');
@@ -383,6 +458,7 @@ export default function WritePostPage() {
         });
 
         if (result) {
+          clearDraft(); // Clear auto-saved draft after successful submission
           alert(language === 'ko' ? '게시글이 등록되었습니다!' : 'Post submitted!');
           router.push('/board');
         } else {
@@ -404,6 +480,22 @@ export default function WritePostPage() {
   const totalCharCount = content.length;
   const isDark = theme.palette.mode === 'dark';
 
+  // Format time for auto-save indicator
+  const formatSavedTime = useMemo(() => {
+    if (!lastSaved) return null;
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastSaved.getTime()) / 1000);
+    if (diff < 60) return language === 'ko' ? '방금 전 저장됨' : 'Saved just now';
+    if (diff < 3600) {
+      const mins = Math.floor(diff / 60);
+      return language === 'ko' ? `${mins}분 전 저장됨` : `Saved ${mins}m ago`;
+    }
+    return lastSaved.toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [lastSaved, language]);
+
   return (
     <>
       <Header />
@@ -418,22 +510,60 @@ export default function WritePostPage() {
           {language === 'ko' ? '돌아가기' : 'Go Back'}
         </Button>
 
-        {/* Page Title */}
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 4,
-            background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
-          {isEditMode
-            ? (language === 'ko' ? '글 수정' : 'Edit Post')
-            : (language === 'ko' ? '새 글 작성' : 'Write New Post')}
-        </Typography>
+        {/* Page Title with Auto-save indicator */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {isEditMode
+              ? (language === 'ko' ? '글 수정' : 'Edit Post')
+              : (language === 'ko' ? '새 글 작성' : 'Write New Post')}
+          </Typography>
+
+          {/* Auto-save indicator (only for new posts) */}
+          {!isEditMode && (lastSaved || restoredFromDraft) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {formatSavedTime && (
+                <Chip
+                  icon={<CloudDoneIcon sx={{ fontSize: 16 }} />}
+                  label={formatSavedTime}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    color: 'text.secondary',
+                    borderColor: 'divider',
+                    fontSize: '0.75rem',
+                  }}
+                />
+              )}
+              {restoredFromDraft && (
+                <Tooltip title={language === 'ko' ? '임시 저장된 글을 삭제합니다' : 'Discard saved draft'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      if (confirm(language === 'ko' ? '임시 저장된 글을 삭제하시겠습니까?' : 'Discard saved draft?')) {
+                        clearDraft();
+                        setTitle('');
+                        setContent('');
+                        setSelectedTags([]);
+                      }
+                    }}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          )}
+        </Box>
 
         {/* Community Guidelines */}
         <Paper
