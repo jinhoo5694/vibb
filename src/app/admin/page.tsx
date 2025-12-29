@@ -56,10 +56,11 @@ import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserProfile, getPosts, deletePost, createPost } from '@/services/supabase';
+import { getUserProfile, getPosts, deletePost, createPost, getPendingPrompts, approvePrompt, rejectPrompt, deletePrompt, Prompt } from '@/services/supabase';
 import { getNews, deleteNews, createNews as createNewsItem } from '@/services/newsService';
 import { NewsItem, NewsCategory, categoryColors as newsCategoryColors, categoryIcons as newsCategoryIcons } from '@/types/news';
 import { Post, SubCategoryTag, subCategoryColors } from '@/types/post';
+import { TextSnippet as PromptIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, HourglassEmpty as PendingIcon } from '@mui/icons-material';
 
 const ITEMS_PER_PAGE = 15;
 
@@ -222,32 +223,39 @@ export default function AdminPage() {
               iconPosition="start"
               label={language === 'ko' ? '게시글 관리' : 'Posts'}
             />
+            <Tab
+              icon={<PromptIcon />}
+              iconPosition="start"
+              label={language === 'ko' ? '프롬프트 승인' : 'Prompts'}
+            />
           </Tabs>
 
           <Box sx={{ p: 3 }}>
-            {/* Sub Tabs */}
-            <Tabs
-              value={subTab}
-              onChange={(_, newValue) => setSubTab(newValue)}
-              sx={{
-                minHeight: 40,
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 500,
+            {/* Sub Tabs - only for News and Posts */}
+            {mainTab !== 2 && (
+              <Tabs
+                value={subTab}
+                onChange={(_, newValue) => setSubTab(newValue)}
+                sx={{
                   minHeight: 40,
-                  px: 2,
-                },
-                '& .Mui-selected': {
-                  color: '#ff6b35',
-                },
-                '& .MuiTabs-indicator': {
-                  bgcolor: '#ff6b35',
-                },
-              }}
-            >
-              <Tab label={language === 'ko' ? '목록 관리' : 'Management'} />
-              <Tab label={language === 'ko' ? '일괄 업로드' : 'Bulk Upload'} />
-            </Tabs>
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    minHeight: 40,
+                    px: 2,
+                  },
+                  '& .Mui-selected': {
+                    color: '#ff6b35',
+                  },
+                  '& .MuiTabs-indicator': {
+                    bgcolor: '#ff6b35',
+                  },
+                }}
+              >
+                <Tab label={language === 'ko' ? '목록 관리' : 'Management'} />
+                <Tab label={language === 'ko' ? '일괄 업로드' : 'Bulk Upload'} />
+              </Tabs>
+            )}
 
             {/* News Tab */}
             <TabPanel value={mainTab} index={0}>
@@ -267,6 +275,11 @@ export default function AdminPage() {
               <SubTabPanel value={subTab} index={1}>
                 <PostsBulkUpload user={user} language={language} isDark={isDark} />
               </SubTabPanel>
+            </TabPanel>
+
+            {/* Prompts Tab */}
+            <TabPanel value={mainTab} index={2}>
+              <PromptsApproval user={user} language={language} isDark={isDark} />
             </TabPanel>
           </Box>
         </Paper>
@@ -1276,6 +1289,348 @@ function PostsBulkUpload({ user, language, isDark }: ManagementProps) {
           </TableContainer>
         </Paper>
       )}
+    </>
+  );
+}
+
+// =============================================
+// PROMPTS APPROVAL COMPONENT
+// =============================================
+function PromptsApproval({ user, language, isDark }: ManagementProps) {
+  const theme = useTheme();
+
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPendingPrompts();
+  }, []);
+
+  const fetchPendingPrompts = async () => {
+    try {
+      setLoading(true);
+      const fetchedPrompts = await getPendingPrompts({ limit: 100 });
+      setPrompts(fetchedPrompts);
+    } catch (error) {
+      console.error('Error fetching pending prompts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!selectedPrompt) return;
+    setProcessing(true);
+    try {
+      const success = await approvePrompt(selectedPrompt.id);
+      if (success) {
+        setPrompts((prev) => prev.filter((p) => p.id !== selectedPrompt.id));
+        setSuccessMessage(language === 'ko' ? '프롬프트가 승인되었습니다.' : 'Prompt approved.');
+        setApproveDialogOpen(false);
+        setSelectedPrompt(null);
+      } else {
+        setErrorMessage(language === 'ko' ? '승인에 실패했습니다.' : 'Failed to approve.');
+      }
+    } catch (error) {
+      setErrorMessage(language === 'ko' ? '오류가 발생했습니다.' : 'An error occurred.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedPrompt) return;
+    setProcessing(true);
+    try {
+      const success = await rejectPrompt(selectedPrompt.id, rejectReason);
+      if (success) {
+        setPrompts((prev) => prev.filter((p) => p.id !== selectedPrompt.id));
+        setSuccessMessage(language === 'ko' ? '프롬프트가 거절되었습니다.' : 'Prompt rejected.');
+        setRejectDialogOpen(false);
+        setSelectedPrompt(null);
+        setRejectReason('');
+      } else {
+        setErrorMessage(language === 'ko' ? '거절에 실패했습니다.' : 'Failed to reject.');
+      }
+    } catch (error) {
+      setErrorMessage(language === 'ko' ? '오류가 발생했습니다.' : 'An error occurred.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat(language === 'ko' ? 'ko-KR' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
+
+  if (loading) {
+    return <Box sx={{ textAlign: 'center', py: 4 }}><Typography>Loading...</Typography></Box>;
+  }
+
+  return (
+    <>
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          {errorMessage}
+        </Alert>
+      )}
+
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="body2">
+          {language === 'ko'
+            ? '사용자가 등록한 프롬프트를 검토하고 승인하거나 거절할 수 있습니다.'
+            : 'Review user-submitted prompts and approve or reject them.'}
+        </Typography>
+      </Alert>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PendingIcon sx={{ color: '#f59e0b' }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {language === 'ko' ? '대기 중인 프롬프트' : 'Pending Prompts'}
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          {language === 'ko' ? `총 ${prompts.length}개` : `Total ${prompts.length}`}
+        </Typography>
+      </Box>
+
+      {prompts.length === 0 ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            textAlign: 'center',
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+          }}
+        >
+          <PendingIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+          <Typography color="text.secondary">
+            {language === 'ko' ? '승인 대기 중인 프롬프트가 없습니다.' : 'No pending prompts.'}
+          </Typography>
+        </Paper>
+      ) : (
+        <TableContainer sx={{ maxHeight: 500, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>{language === 'ko' ? '제목' : 'Title'}</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 120 }}>{language === 'ko' ? '작성자' : 'Author'}</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 120 }}>{language === 'ko' ? '등록일' : 'Date'}</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 150, textAlign: 'center' }}>{language === 'ko' ? '작업' : 'Actions'}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {prompts.map((prompt) => (
+                <TableRow key={prompt.id} hover>
+                  <TableCell>
+                    <Box>
+                      <Typography sx={{ fontWeight: 500, mb: 0.5 }}>{prompt.title}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {prompt.description || prompt.promptText.substring(0, 100)}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">{prompt.author.name}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {formatDate(prompt.createdAt)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                      <Tooltip title={language === 'ko' ? '승인' : 'Approve'}>
+                        <IconButton
+                          size="small"
+                          onClick={() => { setSelectedPrompt(prompt); setApproveDialogOpen(true); }}
+                          sx={{ color: 'success.main' }}
+                        >
+                          <ApproveIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={language === 'ko' ? '거절' : 'Reject'}>
+                        <IconButton
+                          size="small"
+                          onClick={() => { setSelectedPrompt(prompt); setRejectDialogOpen(true); }}
+                          sx={{ color: 'error.main' }}
+                        >
+                          <RejectIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={language === 'ko' ? '상세보기' : 'View Details'}>
+                        <IconButton
+                          size="small"
+                          onClick={() => setSelectedPrompt(prompt)}
+                          sx={{ color: 'text.secondary' }}
+                        >
+                          <ViewIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Approve Dialog */}
+      <Dialog open={approveDialogOpen} onClose={() => setApproveDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: 'success.main' }}>{language === 'ko' ? '프롬프트 승인' : 'Approve Prompt'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            {language === 'ko' ? '이 프롬프트를 승인하시겠습니까? 승인 후 다른 사용자들에게 공개됩니다.' : 'Approve this prompt? It will become visible to all users.'}
+          </DialogContentText>
+          {selectedPrompt && (
+            <Paper elevation={0} sx={{ p: 2, bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>{selectedPrompt.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{selectedPrompt.description}</Typography>
+              <Paper
+                sx={{
+                  p: 1.5,
+                  bgcolor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
+                  borderRadius: 1,
+                  fontFamily: 'monospace',
+                  fontSize: '0.8rem',
+                  maxHeight: 150,
+                  overflow: 'auto',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {selectedPrompt.promptText}
+              </Paper>
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setApproveDialogOpen(false)} disabled={processing}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
+          <Button onClick={handleApprove} disabled={processing} variant="contained" color="success" startIcon={<ApproveIcon />}>
+            {processing ? (language === 'ko' ? '처리 중...' : 'Processing...') : (language === 'ko' ? '승인' : 'Approve')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: 'error.main' }}>{language === 'ko' ? '프롬프트 거절' : 'Reject Prompt'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            {language === 'ko' ? '이 프롬프트를 거절하시겠습니까?' : 'Reject this prompt?'}
+          </DialogContentText>
+          {selectedPrompt && (
+            <Paper elevation={0} sx={{ p: 2, bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 2, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{selectedPrompt.title}</Typography>
+            </Paper>
+          )}
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label={language === 'ko' ? '거절 사유 (선택사항)' : 'Rejection reason (optional)'}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setRejectDialogOpen(false); setRejectReason(''); }} disabled={processing}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
+          <Button onClick={handleReject} disabled={processing} variant="contained" color="error" startIcon={<RejectIcon />}>
+            {processing ? (language === 'ko' ? '처리 중...' : 'Processing...') : (language === 'ko' ? '거절' : 'Reject')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Detail View Dialog (when clicking view icon without approve/reject) */}
+      <Dialog open={Boolean(selectedPrompt) && !approveDialogOpen && !rejectDialogOpen} onClose={() => setSelectedPrompt(null)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {selectedPrompt?.title}
+            <IconButton onClick={() => setSelectedPrompt(null)}><CloseIcon /></IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedPrompt && (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '작성자' : 'Author'}</Typography>
+                <Typography variant="body2">{selectedPrompt.author.name}</Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '설명' : 'Description'}</Typography>
+                <Typography variant="body2">{selectedPrompt.description || '-'}</Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '프롬프트' : 'Prompt'}</Typography>
+                <Paper
+                  sx={{
+                    p: 2,
+                    mt: 1,
+                    bgcolor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
+                    borderRadius: 1,
+                    fontFamily: 'monospace',
+                    fontSize: '0.85rem',
+                    maxHeight: 300,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {selectedPrompt.promptText}
+                </Paper>
+              </Box>
+              {selectedPrompt.variables && selectedPrompt.variables.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">{language === 'ko' ? '변수' : 'Variables'}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                    {selectedPrompt.variables.map((v) => (
+                      <Chip key={v} label={`{{${v}}}`} size="small" sx={{ fontFamily: 'monospace' }} />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+              {selectedPrompt.tags && selectedPrompt.tags.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">{language === 'ko' ? '태그' : 'Tags'}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                    {selectedPrompt.tags.map((t) => (
+                      <Chip key={t} label={t} size="small" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setSelectedPrompt(null); }} sx={{ mr: 'auto' }}>{language === 'ko' ? '닫기' : 'Close'}</Button>
+          <Button onClick={() => setRejectDialogOpen(true)} variant="outlined" color="error" startIcon={<RejectIcon />}>
+            {language === 'ko' ? '거절' : 'Reject'}
+          </Button>
+          <Button onClick={() => setApproveDialogOpen(true)} variant="contained" color="success" startIcon={<ApproveIcon />}>
+            {language === 'ko' ? '승인' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

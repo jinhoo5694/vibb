@@ -41,6 +41,7 @@ import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { MarkdownPreview } from '@/components/MarkdownPreview';
+import { CommentSection } from '@/components/Comments/CommentSection';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { NewsItem, categoryColors, categoryIcons } from '@/types/news';
@@ -438,6 +439,25 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
                 </Button>
               )}
             </Box>
+          </Paper>
+        </motion.div>
+
+        {/* Comments Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, md: 4 },
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: isDark ? '#1a1a1a' : '#fff',
+            }}
+          >
+            <CommentSection contentId={id} />
           </Paper>
         </motion.div>
       </Container>

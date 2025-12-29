@@ -806,24 +806,6 @@ export default function NewsPage() {
                 >
                   {language === 'ko' ? '뉴스 추가' : 'Add News'}
                 </Button>
-                <Button
-                  component={NextLink}
-                  href="/admin"
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  sx={{
-                    borderColor: '#ff6b35',
-                    color: '#ff6b35',
-                    '&:hover': { bgcolor: 'rgba(255, 107, 53, 0.1)', borderColor: '#e55a2b' },
-                    borderRadius: 2,
-                    px: 3,
-                    py: 1,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                  }}
-                >
-                  {language === 'ko' ? '관리자' : 'Admin'}
-                </Button>
               </Box>
             )}
           </Box>
