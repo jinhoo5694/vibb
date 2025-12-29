@@ -90,7 +90,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Comments
     "comments.section.title": "댓글",
-    "comments.section.subtitle": "이 스킬에 대한 생각을 공유하세요",
+    "comments.section.subtitle": "의견을 공유해주세요",
     "comments.section.addComment": "댓글 작성",
     "comments.section.signInPrompt": "댓글을 작성하려면 로그인하세요",
     "comments.section.signInButton": "로그인",
@@ -103,9 +103,9 @@ const translations: Record<Language, Record<string, string>> = {
     "comments.form.update": "수정 완료",
     "comments.form.cancel": "취소",
     "comments.form.reply": "답글 작성",
-    "comments.form.ratingLabel": "이 스킬을 평가해주세요",
+    "comments.form.ratingLabel": "평가해주세요",
     "comments.form.ratingRequired": "별점을 선택해주세요",
-    "comments.form.alreadyCommented": "이미 이 스킬에 댓글을 작성하셨습니다",
+    "comments.form.alreadyCommented": "이미 댓글을 작성하셨습니다",
     "comments.list.noComments": "아직 댓글이 없습니다",
     "comments.list.beFirst": "첫 번째 댓글을 작성해보세요!",
     "comments.item.edited": "수정됨",
@@ -439,7 +439,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Comments
     "comments.section.title": "Comments",
-    "comments.section.subtitle": "Share your thoughts about this skill",
+    "comments.section.subtitle": "Share your thoughts",
     "comments.section.addComment": "Add a comment",
     "comments.section.signInPrompt": "Sign in to leave a comment",
     "comments.section.signInButton": "Sign In",
@@ -452,10 +452,10 @@ const translations: Record<Language, Record<string, string>> = {
     "comments.form.update": "Update",
     "comments.form.cancel": "Cancel",
     "comments.form.reply": "Reply",
-    "comments.form.ratingLabel": "Rate this skill",
+    "comments.form.ratingLabel": "Rate this",
     "comments.form.ratingRequired": "Please select a rating",
     "comments.form.alreadyCommented":
-      "You have already commented on this skill",
+      "You have already commented",
     "comments.list.noComments": "No comments yet",
     "comments.list.beFirst": "Be the first to comment!",
     "comments.item.edited": "Edited",

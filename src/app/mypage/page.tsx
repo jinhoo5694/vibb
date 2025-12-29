@@ -12,10 +12,6 @@ import {
   TextField,
   Tabs,
   Tab,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Chip,
   Divider,
   IconButton,
@@ -26,6 +22,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -580,7 +582,24 @@ export default function MyPage() {
 
         {/* My Comments Tab */}
         <TabPanel value={tabValue} index={1}>
-          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
+          {/* Summary Stats */}
+          {comments.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 100 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '총 댓글' : 'Total'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#ff6b35' }}>{comments.length}</Typography>
+              </Paper>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 100 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '댓글' : 'Comments'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700 }}>{comments.filter(c => c.type === 'review').length}</Typography>
+              </Paper>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 100 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '답글' : 'Replies'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700 }}>{comments.filter(c => c.type === 'reply').length}</Typography>
+              </Paper>
+            </Box>
+          )}
+          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
             {comments.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <CommentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
@@ -589,105 +608,79 @@ export default function MyPage() {
                 </Typography>
               </Box>
             ) : (
-              <List>
-                {comments.map((comment, index) => (
-                  <Box key={comment.id}>
-                    {index > 0 && <Divider />}
-                    <ListItem
-                      component={Link}
-                      href={getContentLink(comment.parent_content.type, comment.parent_content.id)}
-                      sx={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                    >
-                      <ListItemIcon>
-                        {comment.type === 'reply' ? (
-                          <ReplyIcon color="action" />
-                        ) : (
-                          getContentIcon(comment.parent_content.type)
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Box>
-                            {/* Reply indicator */}
-                            {comment.type === 'reply' && comment.parent_review && (
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.5,
-                                mb: 0.5,
-                                color: 'text.secondary',
-                                fontSize: '0.75rem',
-                              }}>
-                                <ReplyIcon sx={{ fontSize: 14 }} />
-                                <Typography variant="caption" sx={{
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: 300,
-                                }}>
-                                  {comment.parent_review.content}
-                                </Typography>
-                              </Box>
-                            )}
-                            <Typography variant="body2" sx={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                            }}>
-                              {comment.content}
-                            </Typography>
-                          </Box>
-                        }
-                        secondary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                            <Chip
-                              label={comment.type === 'reply'
-                                ? (language === 'ko' ? '대댓글' : 'Reply')
-                                : (language === 'ko' ? '댓글' : 'Comment')}
-                              size="small"
-                              color={comment.type === 'reply' ? 'default' : 'primary'}
-                              variant="outlined"
-                              sx={{ height: 18, fontSize: '0.65rem' }}
-                            />
-                            {comment.type === 'review' && comment.rating && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                                <StarIcon sx={{ fontSize: 14, color: '#ffc107' }} />
-                                <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                                  {comment.rating}
-                                </Typography>
-                              </Box>
-                            )}
-                            <Typography variant="caption" color="text.secondary" sx={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              maxWidth: 200,
-                            }}>
-                              {comment.parent_content.title}
-                            </Typography>
-                            <Typography variant="caption" color="text.disabled">
-                              {new Date(comment.created_at).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                  </Box>
-                ))}
-              </List>
+              <TableContainer sx={{ maxHeight: 400 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, width: '50%' }}>{language === 'ko' ? '내용' : 'Content'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{language === 'ko' ? '대상' : 'On'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 80 }}>{language === 'ko' ? '유형' : 'Type'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 90 }}>{language === 'ko' ? '날짜' : 'Date'}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {comments.map((comment) => (
+                      <TableRow
+                        key={comment.id}
+                        component={Link}
+                        href={getContentLink(comment.parent_content.type, comment.parent_content.id)}
+                        hover
+                        sx={{ textDecoration: 'none', cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>
+                            {comment.content}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 150 }}>
+                            {comment.parent_content.title}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={comment.type === 'reply' ? (language === 'ko' ? '답글' : 'Reply') : (language === 'ko' ? '댓글' : 'Comment')}
+                            size="small"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.65rem' }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </TabPanel>
 
         {/* Saved Contents Tab */}
         <TabPanel value={tabValue} index={2}>
-          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
+          {/* Summary Stats */}
+          {savedContents.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 100 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '총 저장' : 'Total Saved'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#ff6b35' }}>{savedContents.length}</Typography>
+              </Paper>
+              {['skill', 'post', 'news', 'prompt', 'mcp'].map(type => {
+                const count = savedContents.filter(c => c.type === type).length;
+                if (count === 0) return null;
+                return (
+                  <Paper key={type} elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 80 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>{type}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>{count}</Typography>
+                  </Paper>
+                );
+              })}
+            </Box>
+          )}
+          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
             {savedContents.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <BookmarkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
@@ -696,48 +689,76 @@ export default function MyPage() {
                 </Typography>
               </Box>
             ) : (
-              <List>
-                {savedContents.map((content, index) => (
-                  <Box key={content.id}>
-                    {index > 0 && <Divider />}
-                    <ListItem
-                      component={Link}
-                      href={getContentLink(content.type, content.id)}
-                      sx={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                    >
-                      <ListItemIcon>
-                        {getContentIcon(content.type)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={content.title}
-                        secondary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                            <Chip
-                              label={content.type}
-                              size="small"
-                              sx={{ height: 20, fontSize: '0.7rem' }}
-                            />
-                            <Typography variant="caption" color="text.disabled">
-                              {new Date(content.bookmarked_at).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                  </Box>
-                ))}
-              </List>
+              <TableContainer sx={{ maxHeight: 400 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, width: 40 }}></TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{language === 'ko' ? '제목' : 'Title'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 80 }}>{language === 'ko' ? '유형' : 'Type'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 90 }}>{language === 'ko' ? '저장일' : 'Saved'}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {savedContents.map((content) => (
+                      <TableRow
+                        key={content.id}
+                        component={Link}
+                        href={getContentLink(content.type, content.id)}
+                        hover
+                        sx={{ textDecoration: 'none', cursor: 'pointer' }}
+                      >
+                        <TableCell sx={{ color: 'text.secondary' }}>
+                          {getContentIcon(content.type)}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 350 }}>
+                            {content.title}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={content.type} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(content.bookmarked_at).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </TabPanel>
 
         {/* Contributions Tab */}
         <TabPanel value={tabValue} index={3}>
-          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
+          {/* Summary Stats */}
+          {contributions.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 100 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '총 기여' : 'Total'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#ff6b35' }}>{contributions.length}</Typography>
+              </Paper>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 80 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '게시됨' : 'Published'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>{contributions.filter(c => c.status === 'published').length}</Typography>
+              </Paper>
+              <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 80 }}>
+                <Typography variant="caption" color="text.secondary">{language === 'ko' ? '검토중' : 'Pending'}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'warning.main' }}>{contributions.filter(c => c.status === 'pending').length}</Typography>
+              </Paper>
+              {contributions.filter(c => c.status === 'draft').length > 0 && (
+                <Paper elevation={0} sx={{ px: 2.5, py: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, minWidth: 80 }}>
+                  <Typography variant="caption" color="text.secondary">{language === 'ko' ? '임시저장' : 'Draft'}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.secondary' }}>{contributions.filter(c => c.status === 'draft').length}</Typography>
+                </Paper>
+              )}
+            </Box>
+          )}
+          <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
             {contributions.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <CreateIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
@@ -746,73 +767,64 @@ export default function MyPage() {
                 </Typography>
               </Box>
             ) : (
-              <List>
-                {contributions.map((contribution, index) => (
-                  <Box key={contribution.id}>
-                    {index > 0 && <Divider />}
-                    <ListItem
-                      component={Link}
-                      href={getContentLink(contribution.type, contribution.id)}
-                      sx={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                    >
-                      <ListItemIcon>
-                        {getContentIcon(contribution.type)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={contribution.title}
-                        secondary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                            <Chip
-                              label={contribution.type}
-                              size="small"
-                              sx={{ height: 20, fontSize: '0.7rem' }}
-                            />
-                            {contribution.status === 'pending' && (
-                              <Chip
-                                icon={<PendingIcon sx={{ fontSize: 14 }} />}
-                                label={language === 'ko' ? '검토중' : 'Pending'}
-                                size="small"
-                                color="warning"
-                                sx={{ height: 20, fontSize: '0.7rem' }}
-                              />
-                            )}
-                            {contribution.status === 'reported' && (
-                              <Chip
-                                icon={<WarningIcon sx={{ fontSize: 14 }} />}
-                                label={language === 'ko' ? '신고됨' : 'Reported'}
-                                size="small"
-                                color="error"
-                                sx={{ height: 20, fontSize: '0.7rem' }}
-                              />
-                            )}
-                            {contribution.status === 'hidden' && (
-                              <Chip
-                                label={language === 'ko' ? '숨김' : 'Hidden'}
-                                size="small"
-                                sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.300' }}
-                              />
-                            )}
-                            {contribution.status === 'draft' && (
-                              <Chip
-                                label={language === 'ko' ? '임시저장' : 'Draft'}
-                                size="small"
-                                sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.200' }}
-                              />
-                            )}
-                            <Typography variant="caption" color="text.disabled">
-                              {new Date(contribution.created_at).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                  </Box>
-                ))}
-              </List>
+              <TableContainer sx={{ maxHeight: 400 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, width: 40 }}></TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{language === 'ko' ? '제목' : 'Title'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 80 }}>{language === 'ko' ? '유형' : 'Type'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 90 }}>{language === 'ko' ? '상태' : 'Status'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 90 }}>{language === 'ko' ? '날짜' : 'Date'}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {contributions.map((contribution) => (
+                      <TableRow
+                        key={contribution.id}
+                        component={Link}
+                        href={getContentLink(contribution.type, contribution.id)}
+                        hover
+                        sx={{ textDecoration: 'none', cursor: 'pointer' }}
+                      >
+                        <TableCell sx={{ color: 'text.secondary' }}>
+                          {getContentIcon(contribution.type)}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>
+                            {contribution.title}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={contribution.type} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        </TableCell>
+                        <TableCell>
+                          {contribution.status === 'published' && (
+                            <Chip label={language === 'ko' ? '게시됨' : 'Published'} size="small" color="success" sx={{ height: 20, fontSize: '0.65rem' }} />
+                          )}
+                          {contribution.status === 'pending' && (
+                            <Chip label={language === 'ko' ? '검토중' : 'Pending'} size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
+                          )}
+                          {contribution.status === 'draft' && (
+                            <Chip label={language === 'ko' ? '임시저장' : 'Draft'} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'grey.300' }} />
+                          )}
+                          {contribution.status === 'reported' && (
+                            <Chip label={language === 'ko' ? '신고됨' : 'Reported'} size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} />
+                          )}
+                          {contribution.status === 'hidden' && (
+                            <Chip label={language === 'ko' ? '숨김' : 'Hidden'} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'grey.400' }} />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(contribution.created_at).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </TabPanel>

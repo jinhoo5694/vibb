@@ -69,6 +69,18 @@ export {
   getPluginAverageRating,
 } from './plugins';
 
+// Prompt functions
+export {
+  getPrompts,
+  getPromptById,
+  getPendingPrompts,
+  createPrompt,
+  approvePrompt,
+  rejectPrompt,
+  deletePrompt,
+} from './prompts';
+export type { Prompt } from './prompts';
+
 // Profile functions
 export {
   getUserProfile,

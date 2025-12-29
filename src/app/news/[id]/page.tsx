@@ -40,6 +40,8 @@ import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
+import { MarkdownPreview } from '@/components/MarkdownPreview';
+import { CommentSection } from '@/components/Comments/CommentSection';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { NewsItem, categoryColors, categoryIcons } from '@/types/news';
@@ -57,7 +59,7 @@ import { isDebugMode } from '@/lib/debug';
 const sampleNewsDetail: NewsItem = {
   id: '1',
   title: 'Claude 3.5 Sonnet 업데이트: 코딩 성능 대폭 향상',
-  summary: 'Anthropic이 Claude 3.5 Sonnet의 새로운 버전을 출시했습니다. 코딩 벤치마크에서 이전 버전 대비 30% 향상된 성능을 보여주며, 특히 복잡한 멀티파일 프로젝트 처리 능력이 크게 개선되었습니다.\n\nClaude 3.5 Sonnet은 코드 생성, 디버깅, 리팩토링 등 다양한 프로그래밍 작업에서 뛰어난 성능을 보여주고 있습니다. 특히 컨텍스트 윈도우가 200K 토큰으로 확장되어 대규모 코드베이스를 한 번에 분석할 수 있게 되었습니다.\n\n이번 업데이트의 주요 개선 사항:\n\n1. 코드 생성 정확도 향상 - 더 정확하고 효율적인 코드 생성\n2. 멀티파일 프로젝트 지원 - 여러 파일에 걸친 변경사항 추적 및 적용\n3. 에러 디버깅 능력 향상 - 복잡한 버그를 더 빠르게 식별하고 수정\n4. 리팩토링 제안 - 코드 품질 개선을 위한 더 나은 제안\n\nAnthropic은 앞으로도 지속적인 업데이트를 통해 개발자들의 생산성 향상을 지원할 계획이라고 밝혔습니다.',
+  content: 'Anthropic이 Claude 3.5 Sonnet의 새로운 버전을 출시했습니다. 코딩 벤치마크에서 이전 버전 대비 30% 향상된 성능을 보여주며, 특히 복잡한 멀티파일 프로젝트 처리 능력이 크게 개선되었습니다.\n\nClaude 3.5 Sonnet은 코드 생성, 디버깅, 리팩토링 등 다양한 프로그래밍 작업에서 뛰어난 성능을 보여주고 있습니다. 특히 컨텍스트 윈도우가 200K 토큰으로 확장되어 대규모 코드베이스를 한 번에 분석할 수 있게 되었습니다.\n\n이번 업데이트의 주요 개선 사항:\n\n1. 코드 생성 정확도 향상 - 더 정확하고 효율적인 코드 생성\n2. 멀티파일 프로젝트 지원 - 여러 파일에 걸친 변경사항 추적 및 적용\n3. 에러 디버깅 능력 향상 - 복잡한 버그를 더 빠르게 식별하고 수정\n4. 리팩토링 제안 - 코드 품질 개선을 위한 더 나은 제안\n\n```typescript\n// 예시 코드\nconst example = async () => {\n  const result = await claude.generate({\n    model: "claude-3.5-sonnet",\n    prompt: "Hello, world!"\n  });\n  console.log(result);\n};\n```\n\nAnthropic은 앞으로도 지속적인 업데이트를 통해 개발자들의 생산성 향상을 지원할 계획이라고 밝혔습니다.',
   source: 'Anthropic Blog',
   sourceUrl: 'https://www.anthropic.com/news',
   category: 'AI',
@@ -151,7 +153,7 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
     if (navigator.share) {
       navigator.share({
         title: news?.title,
-        text: news?.summary?.slice(0, 100),
+        text: news?.content?.slice(0, 100),
         url: window.location.href,
       });
     } else {
@@ -381,17 +383,9 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
             <Divider sx={{ my: 3 }} />
 
             {/* Content */}
-            <Typography
-              variant="body1"
-              sx={{
-                lineHeight: 1.8,
-                whiteSpace: 'pre-line',
-                color: 'text.primary',
-                fontSize: { xs: '1rem', md: '1.1rem' },
-              }}
-            >
-              {news.summary}
-            </Typography>
+            <Box sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
+              <MarkdownPreview content={news.content} isDark={isDark} />
+            </Box>
 
             <Divider sx={{ my: 3 }} />
 
@@ -445,6 +439,25 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
                 </Button>
               )}
             </Box>
+          </Paper>
+        </motion.div>
+
+        {/* Comments Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, md: 4 },
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: isDark ? '#1a1a1a' : '#fff',
+            }}
+          >
+            <CommentSection contentId={id} />
           </Paper>
         </motion.div>
       </Container>

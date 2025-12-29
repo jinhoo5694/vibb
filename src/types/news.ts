@@ -39,7 +39,7 @@ export interface NewsWithAuthor extends NewsRow {
 export interface NewsItem {
   id: string;
   title: string;
-  summary: string;
+  content: string;
   source: string;
   sourceUrl: string;
   category: NewsCategory;
@@ -62,7 +62,7 @@ export function transformNewsRow(row: NewsWithAuthor): NewsItem {
   return {
     id: row.id,
     title: row.title,
-    summary: row.body || '',
+    content: row.body || '',
     source: row.metadata?.source || 'Unknown',
     sourceUrl: row.metadata?.source_url || '#',
     category: row.metadata?.category || 'AI',

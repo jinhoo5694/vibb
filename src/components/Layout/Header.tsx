@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -53,7 +53,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 import {
   Forum as ForumIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
+import { getUserProfile } from '@/services/supabase';
 
 // Sub-menu items for each section
 const aiExtensionSubMenu = [
@@ -103,6 +105,20 @@ export const Header: React.FC = () => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const profile = await getUserProfile(user.id);
+      setIsAdmin(profile?.role === 'admin');
+    }
+    checkAdmin();
+  }, [user]);
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -379,6 +395,18 @@ export const Header: React.FC = () => {
                   <Box sx={{ width: 40, height: 40 }} />
                 ) : user ? (
                   <>
+                    {isAdmin && (
+                      <IconButton
+                        component={Link}
+                        href="/admin"
+                        sx={{
+                          color: theme.palette.primary.main,
+                          '&:hover': { bgcolor: `${theme.palette.primary.main}15` },
+                        }}
+                      >
+                        <AdminIcon />
+                      </IconButton>
+                    )}
                     <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
                       <Avatar
                         src={user.user_metadata?.avatar_url}
@@ -640,6 +668,24 @@ export const Header: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
+                  {isAdmin && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<AdminIcon />}
+                      component={Link}
+                      href="/admin"
+                      onClick={handleMobileNavClick}
+                      sx={{
+                        mb: 1,
+                        borderColor: theme.palette.primary.main,
+                        color: theme.palette.primary.main,
+                        '&:hover': { bgcolor: `${theme.palette.primary.main}15` },
+                      }}
+                    >
+                      {language === 'ko' ? '관리자' : 'Admin'}
+                    </Button>
+                  )}
                   <Button
                     fullWidth
                     variant="outlined"

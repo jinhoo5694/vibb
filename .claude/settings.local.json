@@ -34,7 +34,8 @@
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:api.github.com)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "WebFetch(domain:news.hada.io)"
     ],
     "deny": [],
     "ask": []

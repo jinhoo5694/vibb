@@ -62,7 +62,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '1',
     title: 'Claude 3.5 Sonnet 업데이트: 코딩 성능 대폭 향상',
-    summary: 'Anthropic이 Claude 3.5 Sonnet의 새로운 버전을 출시했습니다. 코딩 벤치마크에서 이전 버전 대비 30% 향상된 성능을 보여주며, 특히 복잡한 멀티파일 프로젝트 처리 능력이 크게 개선되었습니다.',
+    content: 'Anthropic이 Claude 3.5 Sonnet의 새로운 버전을 출시했습니다. 코딩 벤치마크에서 이전 버전 대비 30% 향상된 성능을 보여주며, 특히 복잡한 멀티파일 프로젝트 처리 능력이 크게 개선되었습니다.',
     source: 'Anthropic Blog',
     sourceUrl: '#',
     category: 'AI',
@@ -76,7 +76,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '2',
     title: 'GitHub Copilot, 새로운 코드 리뷰 기능 추가',
-    summary: 'GitHub이 Copilot에 AI 기반 코드 리뷰 기능을 추가했습니다. PR을 자동으로 분석하고 잠재적인 버그와 보안 취약점을 식별해줍니다.',
+    content: 'GitHub이 Copilot에 AI 기반 코드 리뷰 기능을 추가했습니다. PR을 자동으로 분석하고 잠재적인 버그와 보안 취약점을 식별해줍니다.',
     source: 'GitHub Blog',
     sourceUrl: '#',
     category: 'AI',
@@ -90,7 +90,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '3',
     title: 'Cursor IDE 1.0 정식 출시 - AI 네이티브 개발 환경의 새로운 기준',
-    summary: 'Cursor가 드디어 1.0 버전을 정식 출시했습니다. VS Code 기반의 AI 네이티브 IDE로, Claude와 GPT-4를 모두 지원하며 실시간 코드 생성과 리팩토링 기능을 제공합니다.',
+    content: 'Cursor가 드디어 1.0 버전을 정식 출시했습니다. VS Code 기반의 AI 네이티브 IDE로, Claude와 GPT-4를 모두 지원하며 실시간 코드 생성과 리팩토링 기능을 제공합니다.',
     source: 'Cursor',
     sourceUrl: '#',
     category: 'AI',
@@ -104,7 +104,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '4',
     title: 'React 19 RC 발표 - 서버 컴포넌트 정식 지원',
-    summary: 'React 팀이 React 19 Release Candidate를 발표했습니다. 서버 컴포넌트가 정식으로 지원되며, use() 훅과 향상된 Suspense 기능이 포함되었습니다.',
+    content: 'React 팀이 React 19 Release Candidate를 발표했습니다. 서버 컴포넌트가 정식으로 지원되며, use() 훅과 향상된 Suspense 기능이 포함되었습니다.',
     source: 'React Blog',
     sourceUrl: '#',
     category: '개발',
@@ -118,7 +118,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '5',
     title: '바이브 코딩이란? AI와 함께하는 새로운 개발 패러다임',
-    summary: '바이브 코딩(Vibe Coding)은 AI 어시스턴트와 협업하여 코드를 작성하는 새로운 개발 방식입니다. 전통적인 코딩과의 차이점과 효과적인 활용법을 알아봅니다.',
+    content: '바이브 코딩(Vibe Coding)은 AI 어시스턴트와 협업하여 코드를 작성하는 새로운 개발 방식입니다. 전통적인 코딩과의 차이점과 효과적인 활용법을 알아봅니다.',
     source: 'VIB Builders',
     sourceUrl: '#',
     category: '튜토리얼',
@@ -132,7 +132,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '6',
     title: 'OpenAI, GPT-5 개발 진행 상황 공개',
-    summary: 'OpenAI CEO Sam Altman이 GPT-5 개발이 순조롭게 진행중이라고 밝혔습니다. 멀티모달 능력과 추론 성능이 크게 향상될 것으로 예상됩니다.',
+    content: 'OpenAI CEO Sam Altman이 GPT-5 개발이 순조롭게 진행중이라고 밝혔습니다. 멀티모달 능력과 추론 성능이 크게 향상될 것으로 예상됩니다.',
     source: 'TechCrunch',
     sourceUrl: '#',
     category: 'AI',
@@ -146,7 +146,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '7',
     title: 'Vercel, AI SDK 3.0 출시 - 스트리밍 응답 개선',
-    summary: 'Vercel이 AI SDK 3.0을 출시했습니다. OpenAI, Anthropic, Google AI를 통합 지원하며, 스트리밍 응답 처리가 크게 개선되었습니다.',
+    content: 'Vercel이 AI SDK 3.0을 출시했습니다. OpenAI, Anthropic, Google AI를 통합 지원하며, 스트리밍 응답 처리가 크게 개선되었습니다.',
     source: 'Vercel Blog',
     sourceUrl: '#',
     category: '개발',
@@ -160,7 +160,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '8',
     title: 'AI 스타트업 투자 트렌드 2024: 코딩 도구에 집중',
-    summary: '2024년 AI 스타트업 투자는 개발자 도구와 코딩 어시스턴트에 집중되고 있습니다. Cursor, Replit, Sourcegraph 등이 대규모 투자를 유치했습니다.',
+    content: '2024년 AI 스타트업 투자는 개발자 도구와 코딩 어시스턴트에 집중되고 있습니다. Cursor, Replit, Sourcegraph 등이 대규모 투자를 유치했습니다.',
     source: 'Forbes',
     sourceUrl: '#',
     category: '스타트업',
@@ -174,7 +174,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '9',
     title: 'MCP(Model Context Protocol) 완벽 가이드',
-    summary: 'Anthropic이 발표한 MCP는 AI 모델과 외부 도구를 연결하는 표준 프로토콜입니다. 설치부터 커스텀 서버 구축까지 상세히 알아봅니다.',
+    content: 'Anthropic이 발표한 MCP는 AI 모델과 외부 도구를 연결하는 표준 프로토콜입니다. 설치부터 커스텀 서버 구축까지 상세히 알아봅니다.',
     source: 'VIB Builders',
     sourceUrl: '#',
     category: '튜토리얼',
@@ -188,7 +188,7 @@ const sampleNews: NewsItem[] = [
   {
     id: '10',
     title: '2024년 개발자 설문: AI 도구 사용률 78% 돌파',
-    summary: 'Stack Overflow 개발자 설문 결과, 78%의 개발자가 AI 코딩 도구를 사용하고 있는 것으로 나타났습니다. 가장 인기 있는 도구는 GitHub Copilot과 ChatGPT입니다.',
+    content: 'Stack Overflow 개발자 설문 결과, 78%의 개발자가 AI 코딩 도구를 사용하고 있는 것으로 나타났습니다. 가장 인기 있는 도구는 GitHub Copilot과 ChatGPT입니다.',
     source: 'Stack Overflow',
     sourceUrl: '#',
     category: '트렌드',
@@ -260,10 +260,8 @@ const TrendingNewsCard: React.FC<{
       style={{ height: '100%' }}
     >
       <Paper
-        component="a"
-        href={news.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+        component={NextLink}
+        href={`/news/${news.id}`}
         elevation={0}
         sx={{
           display: 'flex',
@@ -423,10 +421,8 @@ const CompactNewsCard: React.FC<{
       style={{ height: '100%' }}
     >
       <Paper
-        component="a"
-        href={news.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+        component={NextLink}
+        href={`/news/${news.id}`}
         elevation={0}
         sx={{
           display: 'flex',
@@ -699,7 +695,7 @@ export default function NewsPage() {
       filtered = filtered.filter(
         (n) =>
           n.title.toLowerCase().includes(q) ||
-          n.summary.toLowerCase().includes(q) ||
+          n.content.toLowerCase().includes(q) ||
           n.source.toLowerCase().includes(q)
       );
     }
@@ -792,24 +788,25 @@ export default function NewsPage() {
                 : 'Latest AI and development news for vibe coding'}
             </Typography>
             {isAdmin && (
-              <Button
-                component={NextLink}
-                href="/news/new"
-                variant="contained"
-                startIcon={<AddIcon />}
-                sx={{
-                  mt: 3,
-                  bgcolor: '#ff6b35',
-                  '&:hover': { bgcolor: '#e55a2b' },
-                  borderRadius: 2,
-                  px: 3,
-                  py: 1,
-                  fontWeight: 600,
-                  textTransform: 'none',
-                }}
-              >
-                {language === 'ko' ? '뉴스 추가' : 'Add News'}
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  component={NextLink}
+                  href="/news/new"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  sx={{
+                    bgcolor: '#ff6b35',
+                    '&:hover': { bgcolor: '#e55a2b' },
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                  }}
+                >
+                  {language === 'ko' ? '뉴스 추가' : 'Add News'}
+                </Button>
+              </Box>
             )}
           </Box>
 

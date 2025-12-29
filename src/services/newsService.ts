@@ -229,7 +229,7 @@ export async function getNewsById(newsId: string): Promise<NewsItem | null> {
 // Create news (admin only)
 export interface CreateNewsInput {
   title: string;
-  summary: string;
+  content: string;
   source: string;
   sourceUrl: string;
   category: NewsCategory;
@@ -245,7 +245,7 @@ export async function createNews(input: CreateNewsInput): Promise<{ id: string }
       author_id: input.authorId,
       type: 'news',
       title: input.title,
-      body: input.summary,
+      body: input.content,
       content_status: 'published',
       metadata: {
         source: input.source,
@@ -272,7 +272,7 @@ export async function updateNews(newsId: string, input: CreateNewsInput): Promis
     .from('contents')
     .update({
       title: input.title,
-      body: input.summary,
+      body: input.content,
       metadata: {
         source: input.source,
         source_url: input.sourceUrl,
