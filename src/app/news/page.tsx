@@ -808,8 +808,9 @@ export default function NewsPage() {
                 </Button>
                 <Button
                   component={NextLink}
-                  href="/news/bulk-upload"
+                  href="/admin"
                   variant="outlined"
+                  startIcon={<EditIcon />}
                   sx={{
                     borderColor: '#ff6b35',
                     color: '#ff6b35',
@@ -821,7 +822,7 @@ export default function NewsPage() {
                     textTransform: 'none',
                   }}
                 >
-                  {language === 'ko' ? '일괄 업로드' : 'Bulk Upload'}
+                  {language === 'ko' ? '관리자' : 'Admin'}
                 </Button>
               </Box>
             )}
