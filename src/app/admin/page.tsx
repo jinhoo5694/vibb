@@ -62,7 +62,7 @@ import { NewsItem, NewsCategory, categoryColors as newsCategoryColors, categoryI
 import { Post, SubCategoryTag, subCategoryColors } from '@/types/post';
 import { TextSnippet as PromptIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, HourglassEmpty as PendingIcon } from '@mui/icons-material';
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 25;
 
 // Valid tags for posts
 const VALID_TAGS: SubCategoryTag[] = [
@@ -479,7 +479,7 @@ function NewsManagement({ user, language, isDark }: ManagementProps) {
         </Typography>
       </Box>
 
-      <TableContainer sx={{ maxHeight: 500, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+      <TableContainer sx={{ maxHeight: 700, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
@@ -977,7 +977,7 @@ function PostsManagement({ user, language, isDark }: ManagementProps) {
         </Typography>
       </Box>
 
-      <TableContainer sx={{ maxHeight: 500, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+      <TableContainer sx={{ maxHeight: 700, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
@@ -1428,7 +1428,7 @@ function PromptsApproval({ user, language, isDark }: ManagementProps) {
           </Typography>
         </Paper>
       ) : (
-        <TableContainer sx={{ maxHeight: 500, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+        <TableContainer sx={{ maxHeight: 700, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>

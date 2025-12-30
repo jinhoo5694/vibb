@@ -441,6 +441,8 @@ export default function PromptHubPage() {
               {prompts.map((prompt) => (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }} key={prompt.id}>
                   <Card
+                    component={Link}
+                    href={`/prompt/${prompt.id}`}
                     elevation={0}
                     sx={{
                       height: '100%',
@@ -449,6 +451,9 @@ export default function PromptHubPage() {
                       border: `1px solid ${theme.palette.divider}`,
                       borderRadius: 2,
                       transition: 'all 0.2s ease',
+                      cursor: 'pointer',
+                      textDecoration: 'none',
+                      color: 'inherit',
                       '&:hover': {
                         borderColor: '#f59e0b',
                         boxShadow: theme.shadows[4],
@@ -506,17 +511,13 @@ export default function PromptHubPage() {
                       </Box>
                     </CardContent>
                     <CardActions sx={{ px: 2, pb: 2 }}>
-                      <Button
-                        size="small"
-                        component={Link}
-                        href={`/prompt/${prompt.id}`}
-                        sx={{ color: '#f59e0b' }}
-                      >
-                        {language === 'ko' ? '자세히 보기' : 'View Details'}
-                      </Button>
                       <IconButton
                         size="small"
-                        onClick={() => handleCopyPrompt(prompt)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCopyPrompt(prompt);
+                        }}
                         sx={{
                           ml: 'auto',
                           color: copiedId === prompt.id ? 'success.main' : 'text.secondary',

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -42,11 +42,13 @@ import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
 import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { CommentSection } from '@/components/Comments/CommentSection';
+import { NewsNavigationList } from '@/components/News/NewsNavigationList';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { NewsItem, categoryColors, categoryIcons } from '@/types/news';
 import {
   getNewsById,
+  getNews,
   deleteNews,
   toggleBookmark,
   isBookmarked as checkBookmarked,
@@ -90,6 +92,11 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
+  // State for news navigation list
+  const [allNews, setAllNews] = useState<NewsItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const NEWS_PER_PAGE = 15;
+
   // Fetch news and user data
   useEffect(() => {
     async function fetchData() {
@@ -98,12 +105,18 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
       if (isDebugMode()) {
         // In debug mode, use sample data
         setNews({ ...sampleNewsDetail, id });
+        setAllNews([{ ...sampleNewsDetail, id }]);
         setLoading(false);
         return;
       }
 
       try {
-        const newsData = await getNewsById(id);
+        // Fetch current news and all news list in parallel
+        const [newsData, newsListData] = await Promise.all([
+          getNewsById(id),
+          getNews({ sortBy: 'new', limit: 100 }),
+        ]);
+
         if (newsData) {
           setNews(newsData);
           // Increment view count (only once per page load)
@@ -112,6 +125,8 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
             incrementViewCount(id);
           }
         }
+
+        setAllNews(newsListData);
       } catch (error) {
         console.error('Error fetching news:', error);
       } finally {
@@ -120,6 +135,23 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
     }
     fetchData();
   }, [id]);
+
+  // Calculate which page the current news is on
+  useEffect(() => {
+    const newsIndex = allNews.findIndex(n => n.id === id);
+    if (newsIndex !== -1) {
+      const page = Math.floor(newsIndex / NEWS_PER_PAGE) + 1;
+      setCurrentPage(page);
+    }
+  }, [id, allNews]);
+
+  // Get paginated news for current page
+  const paginatedNews = useMemo(() => {
+    const startIndex = (currentPage - 1) * NEWS_PER_PAGE;
+    return allNews.slice(startIndex, startIndex + NEWS_PER_PAGE);
+  }, [allNews, currentPage]);
+
+  const totalPages = Math.ceil(allNews.length / NEWS_PER_PAGE);
 
   // Check user admin status and bookmark
   useEffect(() => {
@@ -460,6 +492,47 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
             <CommentSection contentId={id} />
           </Paper>
         </motion.div>
+
+        {/* News Navigation List */}
+        {paginatedNews.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                {language === 'ko' ? '뉴스 목록' : 'News List'}
+              </Typography>
+              <NewsNavigationList
+                newsList={paginatedNews}
+                currentNewsId={id}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </Box>
+          </motion.div>
+        )}
+
+        {/* Back Button */}
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => router.push('/news')}
+            sx={{
+              borderColor: theme.palette.divider,
+              color: 'text.secondary',
+              '&:hover': {
+                borderColor: '#ff6b35',
+                color: '#ff6b35',
+              },
+            }}
+          >
+            {language === 'ko' ? '목록으로' : 'Back to List'}
+          </Button>
+        </Box>
       </Container>
 
       {/* Delete Confirmation Dialog */}

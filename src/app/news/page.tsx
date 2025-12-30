@@ -39,6 +39,7 @@ import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { ScrollToTopFab } from '@/components/Layout/ScrollToTopFab';
 import { InquiryFab } from '@/components/Layout/InquiryFab';
+import { NewsListTable } from '@/components/News/NewsListTable';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -1027,28 +1028,12 @@ export default function NewsPage() {
                 subtitle={`${news.length}${language === 'ko' ? '개의 뉴스' : ' articles'}`}
               />
 
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(2, 1fr)',
-                    md: 'repeat(3, 1fr)',
-                  },
-                  gap: 2,
-                }}
-              >
-                {paginatedNews.map((item, index) => (
-                  <CompactNewsCard
-                    key={item.id}
-                    news={item}
-                    isBookmarked={bookmarkedIds.has(item.id)}
-                    onToggleBookmark={() => handleToggleBookmark(item.id)}
-                    index={index}
-                    isAdmin={isAdmin}
-                  />
-                ))}
-              </Box>
+              <NewsListTable
+                news={paginatedNews}
+                bookmarkedIds={bookmarkedIds}
+                onToggleBookmark={handleToggleBookmark}
+                isAdmin={isAdmin}
+              />
             </Box>
 
             {/* Pagination */}
