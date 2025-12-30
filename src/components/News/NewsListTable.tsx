@@ -8,22 +8,22 @@ import {
   useMediaQuery,
   Chip,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
-  ThumbUp as ThumbUpIcon,
-  ChatBubbleOutline as CommentIcon,
-  OpenInNew as OpenInNewIcon,
   Bookmark as BookmarkIcon,
   BookmarkBorder as BookmarkBorderIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NewsItem, NewsCategory } from '@/types/news';
+import { NewsItem, categoryColors, categoryIcons } from '@/types/news';
+import Link from 'next/link';
 
 interface NewsListTableProps {
   news: NewsItem[];
   bookmarkedIds: Set<string>;
   onToggleBookmark: (id: string) => void;
-  categoryColors: Record<NewsCategory | 'all', string>;
+  isAdmin?: boolean;
 }
 
 // Single row component for a news item
@@ -31,8 +31,8 @@ const NewsRow: React.FC<{
   item: NewsItem;
   isBookmarked: boolean;
   onToggleBookmark: () => void;
-  categoryColors: Record<NewsCategory | 'all', string>;
-}> = ({ item, isBookmarked, onToggleBookmark, categoryColors }) => {
+  isAdmin?: boolean;
+}> = ({ item, isBookmarked, onToggleBookmark, isAdmin }) => {
   const theme = useTheme();
   const { language } = useLanguage();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -46,159 +46,198 @@ const NewsRow: React.FC<{
       // Today - show time
       return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
     } else {
-      // Older - show date
-      return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace('. ', '.').replace('.', '');
+      // Older - show date as MM.DD
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${month}.${day}`;
     }
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on bookmark button
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-    window.open(item.sourceUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <Box
-      onClick={handleClick}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        py: 1,
-        px: { xs: 1.5, sm: 2 },
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        cursor: 'pointer',
-        transition: 'background-color 0.15s',
-        '&:hover': {
-          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-        },
-        minHeight: 44,
-      }}
-    >
-      {/* Category - Compact chip */}
-      <Box sx={{ width: { xs: 50, sm: 70 }, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-        <Chip
-          label={item.category.length > 3 ? item.category.slice(0, 3) : item.category}
-          size="small"
-          sx={{
-            height: 20,
-            fontSize: '0.65rem',
-            fontWeight: 600,
-            bgcolor: `${categoryColors[item.category]}15`,
-            color: categoryColors[item.category],
-            '& .MuiChip-label': {
-              px: 0.75,
-            },
-          }}
-        />
-      </Box>
-
-      {/* Title + Comment Count - Flex grow */}
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, pr: 1 }}>
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 400,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            color: 'text.primary',
-            fontSize: { xs: '0.85rem', sm: '0.9rem' },
-            '&:hover': {
+    <Link href={`/news/${item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          py: 1,
+          px: { xs: 1.5, sm: 2 },
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          cursor: 'pointer',
+          transition: 'background-color 0.15s',
+          '&:hover': {
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+            '& .news-title': {
               color: '#ff6b35',
             },
-          }}
-        >
-          {item.title}
-        </Typography>
-        {item.commentCount > 0 && (
-          <Typography
-            variant="caption"
+          },
+          minHeight: 44,
+        }}
+      >
+        {/* Category - Compact chip with icon */}
+        <Box sx={{ width: { xs: 55, sm: 75 }, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+          <Chip
+            label={`${categoryIcons[item.category]} ${item.category.length > 3 ? item.category.slice(0, 3) : item.category}`}
+            size="small"
             sx={{
-              color: '#ff6b35',
-              fontWeight: 700,
-              fontSize: '0.75rem',
-              flexShrink: 0,
-              ml: 0.5,
+              height: 20,
+              fontSize: '0.6rem',
+              fontWeight: 600,
+              bgcolor: `${categoryColors[item.category]}15`,
+              color: categoryColors[item.category],
+              '& .MuiChip-label': {
+                px: 0.5,
+              },
+            }}
+          />
+        </Box>
+
+        {/* Title + Comment Count - Flex grow */}
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, pr: 1 }}>
+          <Typography
+            className="news-title"
+            variant="body2"
+            sx={{
+              fontWeight: 400,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: 'text.primary',
+              fontSize: { xs: '0.85rem', sm: '0.9rem' },
+              transition: 'color 0.15s',
             }}
           >
-            [{item.commentCount}]
+            {item.title}
           </Typography>
-        )}
-        <OpenInNewIcon sx={{ fontSize: 12, color: 'text.disabled', flexShrink: 0, ml: 0.5 }} />
-      </Box>
+          {item.commentCount > 0 && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: '#ff6b35',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                flexShrink: 0,
+                ml: 0.5,
+              }}
+            >
+              [{item.commentCount}]
+            </Typography>
+          )}
+        </Box>
 
-      {/* Source */}
-      <Typography
-        variant="caption"
-        sx={{
-          width: { xs: 60, sm: 90 },
-          flexShrink: 0,
-          color: 'text.secondary',
-          textAlign: 'center',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          fontSize: '0.75rem',
-        }}
-      >
-        {item.source}
-      </Typography>
-
-      {/* Date */}
-      <Typography
-        variant="caption"
-        sx={{
-          width: { xs: 45, sm: 55 },
-          flexShrink: 0,
-          color: 'text.disabled',
-          textAlign: 'center',
-          fontSize: '0.75rem',
-        }}
-      >
-        {formatDate(item.createdAt)}
-      </Typography>
-
-      {/* Likes - Hidden on mobile */}
-      {!isMobile && (
+        {/* Source - Hidden on mobile */}
         <Typography
           variant="caption"
           sx={{
-            width: 50,
+            width: { xs: 0, sm: 90 },
             flexShrink: 0,
-            color: item.upvoteCount > 100 ? '#ff6b35' : item.upvoteCount > 30 ? 'text.secondary' : 'text.disabled',
-            fontWeight: item.upvoteCount > 100 ? 700 : 500,
+            color: 'text.secondary',
+            textAlign: 'center',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: '0.75rem',
+            display: { xs: 'none', sm: 'block' },
+          }}
+        >
+          {item.source}
+        </Typography>
+
+        {/* Date */}
+        <Typography
+          variant="caption"
+          sx={{
+            width: { xs: 45, sm: 55 },
+            flexShrink: 0,
+            color: 'text.disabled',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+          }}
+        >
+          {formatDate(item.createdAt)}
+        </Typography>
+
+        {/* Views - Hidden on mobile */}
+        {!isMobile && (
+          <Typography
+            variant="caption"
+            sx={{
+              width: 50,
+              flexShrink: 0,
+              color: 'text.disabled',
+              textAlign: 'center',
+              fontSize: '0.75rem',
+            }}
+          >
+            {item.viewCount ?? 0}
+          </Typography>
+        )}
+
+        {/* Upvotes */}
+        <Typography
+          variant="caption"
+          sx={{
+            width: { xs: 35, sm: 45 },
+            flexShrink: 0,
+            color: item.upvoteCount > 50 ? '#ff6b35' : item.upvoteCount > 10 ? 'text.secondary' : 'text.disabled',
+            fontWeight: item.upvoteCount > 50 ? 700 : 500,
             textAlign: 'center',
             fontSize: '0.75rem',
           }}
         >
           {item.upvoteCount > 0 ? item.upvoteCount : '-'}
         </Typography>
-      )}
 
-      {/* Bookmark */}
-      <Box sx={{ width: 35, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleBookmark();
-          }}
+        {/* Actions */}
+        <Box
           sx={{
-            p: 0.5,
-            color: isBookmarked ? '#ff6b35' : 'text.disabled',
+            width: { xs: 30, sm: isAdmin ? 55 : 30 },
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 0.25,
           }}
         >
-          {isBookmarked ? <BookmarkIcon sx={{ fontSize: 16 }} /> : <BookmarkBorderIcon sx={{ fontSize: 16 }} />}
-        </IconButton>
+          {isAdmin && !isMobile && (
+            <Tooltip title={language === 'ko' ? '수정' : 'Edit'}>
+              <IconButton
+                component={Link}
+                href={`/news/${item.id}/edit`}
+                size="small"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                }}
+                sx={{
+                  p: 0.25,
+                  color: '#ff6b35',
+                  '&:hover': { bgcolor: 'rgba(255, 107, 53, 0.1)' },
+                }}
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleBookmark();
+            }}
+            sx={{
+              p: 0.25,
+              color: isBookmarked ? '#ff6b35' : 'text.disabled',
+            }}
+          >
+            {isBookmarked ? <BookmarkIcon sx={{ fontSize: 16 }} /> : <BookmarkBorderIcon sx={{ fontSize: 16 }} />}
+          </IconButton>
+        </Box>
       </Box>
-    </Box>
+    </Link>
   );
 };
 
 // Table header component
-const TableHeader: React.FC = () => {
+const TableHeader: React.FC<{ isAdmin?: boolean }> = ({ isAdmin }) => {
   const theme = useTheme();
   const { language } = useLanguage();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -217,7 +256,7 @@ const TableHeader: React.FC = () => {
       <Typography
         variant="caption"
         sx={{
-          width: { xs: 50, sm: 70 },
+          width: { xs: 55, sm: 75 },
           flexShrink: 0,
           color: 'text.secondary',
           textAlign: 'center',
@@ -244,12 +283,13 @@ const TableHeader: React.FC = () => {
       <Typography
         variant="caption"
         sx={{
-          width: { xs: 60, sm: 90 },
+          width: { xs: 0, sm: 90 },
           flexShrink: 0,
           color: 'text.secondary',
           textAlign: 'center',
           fontWeight: 600,
           fontSize: '0.75rem',
+          display: { xs: 'none', sm: 'block' },
         }}
       >
         {language === 'ko' ? '출처' : 'Source'}
@@ -281,14 +321,14 @@ const TableHeader: React.FC = () => {
             fontSize: '0.75rem',
           }}
         >
-          {language === 'ko' ? '추천' : 'Likes'}
+          {language === 'ko' ? '조회' : 'Views'}
         </Typography>
       )}
 
       <Typography
         variant="caption"
         sx={{
-          width: 35,
+          width: { xs: 35, sm: 45 },
           flexShrink: 0,
           color: 'text.secondary',
           textAlign: 'center',
@@ -296,8 +336,15 @@ const TableHeader: React.FC = () => {
           fontSize: '0.75rem',
         }}
       >
-        {language === 'ko' ? '저장' : 'Save'}
+        {language === 'ko' ? '추천' : 'Votes'}
       </Typography>
+
+      <Box
+        sx={{
+          width: { xs: 30, sm: isAdmin ? 55 : 30 },
+          flexShrink: 0,
+        }}
+      />
     </Box>
   );
 };
@@ -306,7 +353,7 @@ export const NewsListTable: React.FC<NewsListTableProps> = ({
   news,
   bookmarkedIds,
   onToggleBookmark,
-  categoryColors,
+  isAdmin,
 }) => {
   const theme = useTheme();
   const { language } = useLanguage();
@@ -338,14 +385,14 @@ export const NewsListTable: React.FC<NewsListTableProps> = ({
         overflow: 'hidden',
       }}
     >
-      <TableHeader />
+      <TableHeader isAdmin={isAdmin} />
       {news.map((item) => (
         <NewsRow
           key={item.id}
           item={item}
           isBookmarked={bookmarkedIds.has(item.id)}
           onToggleBookmark={() => onToggleBookmark(item.id)}
-          categoryColors={categoryColors}
+          isAdmin={isAdmin}
         />
       ))}
     </Box>
