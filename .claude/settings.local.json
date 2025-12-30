@@ -35,7 +35,13 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:api.github.com)",
       "Bash(node -e:*)",
-      "WebFetch(domain:news.hada.io)"
+      "WebFetch(domain:news.hada.io)",
+      "Bash(node scripts/crawl-geeknews.js:*)",
+      "Bash(timeout 180 node:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 600 node:*)",
+      "Bash(timeout 30 node:*)",
+      "Bash(timeout 300 node:*)"
     ],
     "deny": [],
     "ask": []
