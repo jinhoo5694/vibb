@@ -56,7 +56,7 @@ import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserProfile, getPosts, deletePost, createPost, getPendingPrompts, approvePrompt, rejectPrompt, deletePrompt, Prompt } from '@/services/supabase';
+import { getUserProfile, getPosts, deletePost, createPost, getPendingPrompts, getPromptsForAdmin, approvePrompt, rejectPrompt, deletePrompt, updatePrompt, Prompt } from '@/services/supabase';
 import { getNews, deleteNews, createNews as createNewsItem } from '@/services/newsService';
 import { NewsItem, NewsCategory, categoryColors as newsCategoryColors, categoryIcons as newsCategoryIcons } from '@/types/news';
 import { Post, SubCategoryTag, subCategoryColors } from '@/types/post';
@@ -226,13 +226,13 @@ export default function AdminPage() {
             <Tab
               icon={<PromptIcon />}
               iconPosition="start"
-              label={language === 'ko' ? '프롬프트 승인' : 'Prompts'}
+              label={language === 'ko' ? '프롬프트 관리' : 'Prompts'}
             />
           </Tabs>
 
           <Box sx={{ p: 3 }}>
-            {/* Sub Tabs - only for News and Posts */}
-            {mainTab !== 2 && (
+            {/* Sub Tabs - for all tabs */}
+            {mainTab !== 2 ? (
               <Tabs
                 value={subTab}
                 onChange={(_, newValue) => setSubTab(newValue)}
@@ -254,6 +254,29 @@ export default function AdminPage() {
               >
                 <Tab label={language === 'ko' ? '목록 관리' : 'Management'} />
                 <Tab label={language === 'ko' ? '일괄 업로드' : 'Bulk Upload'} />
+              </Tabs>
+            ) : (
+              <Tabs
+                value={subTab}
+                onChange={(_, newValue) => setSubTab(newValue)}
+                sx={{
+                  minHeight: 40,
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    minHeight: 40,
+                    px: 2,
+                  },
+                  '& .Mui-selected': {
+                    color: '#ff6b35',
+                  },
+                  '& .MuiTabs-indicator': {
+                    bgcolor: '#ff6b35',
+                  },
+                }}
+              >
+                <Tab label={language === 'ko' ? '목록 관리' : 'Management'} />
+                <Tab label={language === 'ko' ? '승인 대기' : 'Pending Approval'} />
               </Tabs>
             )}
 
@@ -279,7 +302,12 @@ export default function AdminPage() {
 
             {/* Prompts Tab */}
             <TabPanel value={mainTab} index={2}>
-              <PromptsApproval user={user} language={language} isDark={isDark} />
+              <SubTabPanel value={subTab} index={0}>
+                <PromptsManagement user={user} language={language} isDark={isDark} />
+              </SubTabPanel>
+              <SubTabPanel value={subTab} index={1}>
+                <PromptsApproval user={user} language={language} isDark={isDark} />
+              </SubTabPanel>
             </TabPanel>
           </Box>
         </Paper>
@@ -1294,6 +1322,444 @@ function PostsBulkUpload({ user, language, isDark }: ManagementProps) {
 }
 
 // =============================================
+// PROMPTS MANAGEMENT COMPONENT (Admin CRUD)
+// =============================================
+function PromptsManagement({ user, language, isDark }: ManagementProps) {
+  const theme = useTheme();
+  const router = useRouter();
+
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'pending' | 'blocked'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [promptToDelete, setPromptToDelete] = useState<Prompt | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [promptToEdit, setPromptToEdit] = useState<Prompt | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', promptText: '', status: 'published' as 'published' | 'pending' | 'blocked' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchPrompts();
+  }, [statusFilter]);
+
+  const fetchPrompts = async () => {
+    try {
+      setLoading(true);
+      const fetchedPrompts = await getPromptsForAdmin({ limit: 1000, status: statusFilter });
+      setPrompts(fetchedPrompts);
+      setFilteredPrompts(fetchedPrompts);
+    } catch (error) {
+      console.error('Error fetching prompts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredPrompts(prompts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredPrompts(
+        prompts.filter(
+          (item) =>
+            item.title.toLowerCase().includes(query) ||
+            item.author.name.toLowerCase().includes(query) ||
+            item.promptText.toLowerCase().includes(query)
+        )
+      );
+    }
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  }, [searchQuery, prompts]);
+
+  const totalPages = Math.ceil(filteredPrompts.length / ITEMS_PER_PAGE);
+  const paginatedPrompts = filteredPrompts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(paginatedPrompts.map((item) => item.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      checked ? newSet.add(id) : newSet.delete(id);
+      return newSet;
+    });
+  };
+
+  const isAllSelected = paginatedPrompts.length > 0 && paginatedPrompts.every((item) => selectedIds.has(item.id));
+  const isPartialSelected = paginatedPrompts.some((item) => selectedIds.has(item.id)) && !isAllSelected;
+
+  const handleDeleteConfirm = async () => {
+    if (!promptToDelete) return;
+    setDeleting(true);
+    try {
+      const success = await deletePrompt(promptToDelete.id);
+      if (success) {
+        setPrompts((prev) => prev.filter((p) => p.id !== promptToDelete.id));
+        setSuccessMessage(language === 'ko' ? '프롬프트가 삭제되었습니다.' : 'Prompt deleted.');
+        setDeleteDialogOpen(false);
+        setPromptToDelete(null);
+      } else {
+        setDeleteError(language === 'ko' ? '삭제에 실패했습니다.' : 'Failed to delete.');
+      }
+    } catch (error) {
+      setDeleteError(language === 'ko' ? '오류가 발생했습니다.' : 'An error occurred.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const idsToDelete = Array.from(selectedIds);
+    if (idsToDelete.length === 0) return;
+    setBulkDeleting(true);
+    setBulkDeleteProgress(0);
+    let successCount = 0;
+
+    for (let i = 0; i < idsToDelete.length; i++) {
+      try {
+        const success = await deletePrompt(idsToDelete[i]);
+        if (success) successCount++;
+      } catch (error) {}
+      setBulkDeleteProgress(((i + 1) / idsToDelete.length) * 100);
+    }
+
+    await fetchPrompts();
+    setSelectedIds(new Set());
+    setBulkDeleting(false);
+    setBulkDeleteDialogOpen(false);
+    setSuccessMessage(
+      language === 'ko'
+        ? `${successCount}개의 프롬프트가 삭제되었습니다.`
+        : `${successCount} prompts deleted.`
+    );
+  };
+
+  const handleEditOpen = (prompt: Prompt) => {
+    setPromptToEdit(prompt);
+    setEditForm({
+      title: prompt.title,
+      description: prompt.description,
+      promptText: prompt.promptText,
+      status: prompt.status === 'draft' ? 'pending' : prompt.status as 'published' | 'pending' | 'blocked',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!promptToEdit) return;
+    setSaving(true);
+    try {
+      const success = await updatePrompt(promptToEdit.id, {
+        title: editForm.title,
+        description: editForm.description,
+        promptText: editForm.promptText,
+        status: editForm.status,
+      });
+      if (success) {
+        await fetchPrompts();
+        setSuccessMessage(language === 'ko' ? '프롬프트가 수정되었습니다.' : 'Prompt updated.');
+        setEditDialogOpen(false);
+        setPromptToEdit(null);
+      } else {
+        setDeleteError(language === 'ko' ? '수정에 실패했습니다.' : 'Failed to update.');
+      }
+    } catch (error) {
+      setDeleteError(language === 'ko' ? '오류가 발생했습니다.' : 'An error occurred.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat(language === 'ko' ? 'ko-KR' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
+
+  const getStatusChip = (status: string) => {
+    switch (status) {
+      case 'published':
+        return <Chip icon={<ApproveIcon sx={{ fontSize: 14 }} />} label={language === 'ko' ? '공개' : 'Published'} size="small" color="success" sx={{ fontSize: '0.65rem' }} />;
+      case 'pending':
+        return <Chip icon={<PendingIcon sx={{ fontSize: 14 }} />} label={language === 'ko' ? '대기' : 'Pending'} size="small" color="warning" sx={{ fontSize: '0.65rem' }} />;
+      case 'blocked':
+        return <Chip icon={<RejectIcon sx={{ fontSize: 14 }} />} label={language === 'ko' ? '차단' : 'Blocked'} size="small" color="error" sx={{ fontSize: '0.65rem' }} />;
+      default:
+        return <Chip label={status} size="small" sx={{ fontSize: '0.65rem' }} />;
+    }
+  };
+
+  if (loading) {
+    return <Box sx={{ textAlign: 'center', py: 4 }}><Typography>Loading...</Typography></Box>;
+  }
+
+  return (
+    <>
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
+      {deleteError && (
+        <Alert severity="error" onClose={() => setDeleteError(null)} sx={{ mb: 2 }}>
+          {deleteError}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+          <TextField
+            placeholder={language === 'ko' ? '검색...' : 'Search...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.disabled' }} /></InputAdornment>,
+              endAdornment: searchQuery && (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchQuery('')}><CloseIcon sx={{ fontSize: 18 }} /></IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            sx={{ minWidth: 120 }}
+            SelectProps={{ native: true }}
+          >
+            <option value="all">{language === 'ko' ? '전체' : 'All'}</option>
+            <option value="published">{language === 'ko' ? '공개' : 'Published'}</option>
+            <option value="pending">{language === 'ko' ? '대기' : 'Pending'}</option>
+            <option value="blocked">{language === 'ko' ? '차단' : 'Blocked'}</option>
+          </TextField>
+          {selectedIds.size > 0 && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteSweepIcon />}
+              onClick={() => setBulkDeleteDialogOpen(true)}
+              sx={{ fontWeight: 600 }}
+            >
+              {language === 'ko' ? `${selectedIds.size}개 삭제` : `Delete ${selectedIds.size}`}
+            </Button>
+          )}
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          {language === 'ko' ? `총 ${filteredPrompts.length}개` : `Total ${filteredPrompts.length}`}
+        </Typography>
+      </Box>
+
+      <TableContainer sx={{ maxHeight: 700, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ width: 40, p: 1 }}>
+                <Checkbox
+                  checked={isAllSelected}
+                  indeterminate={isPartialSelected}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  sx={{ '&.Mui-checked, &.MuiCheckbox-indeterminate': { color: '#ff6b35' } }}
+                />
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>{language === 'ko' ? '제목' : 'Title'}</TableCell>
+              <TableCell sx={{ fontWeight: 600, width: 100 }}>{language === 'ko' ? '작성자' : 'Author'}</TableCell>
+              <TableCell sx={{ fontWeight: 600, width: 80 }}>{language === 'ko' ? '상태' : 'Status'}</TableCell>
+              <TableCell sx={{ fontWeight: 600, width: 120 }}>{language === 'ko' ? '등록일' : 'Date'}</TableCell>
+              <TableCell sx={{ fontWeight: 600, width: 80, textAlign: 'center' }}>{language === 'ko' ? '작업' : 'Actions'}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedPrompts.map((item) => (
+              <TableRow key={item.id} hover selected={selectedIds.has(item.id)}>
+                <TableCell sx={{ p: 1 }}>
+                  <Checkbox
+                    checked={selectedIds.has(item.id)}
+                    onChange={(e) => handleSelectItem(item.id, e.target.checked)}
+                    sx={{ '&.Mui-checked': { color: '#ff6b35' } }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Box>
+                    <Typography sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                      {item.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {item.promptText.substring(0, 60)}...
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>{item.author.name}</Typography>
+                </TableCell>
+                <TableCell>
+                  {getStatusChip(item.status)}
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{formatDate(item.createdAt)}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                    <Tooltip title={language === 'ko' ? '수정' : 'Edit'}>
+                      <IconButton size="small" onClick={() => handleEditOpen(item)} sx={{ color: '#ff6b35' }}>
+                        <EditIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={language === 'ko' ? '삭제' : 'Delete'}>
+                      <IconButton size="small" onClick={() => { setPromptToDelete(item); setDeleteDialogOpen(true); }} sx={{ color: theme.palette.error.main }}>
+                        <DeleteIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+            {paginatedPrompts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography color="text.secondary">{language === 'ko' ? '프롬프트가 없습니다.' : 'No prompts.'}</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={(_, page) => { setCurrentPage(page); setSelectedIds(new Set()); }}
+            size="small"
+            sx={{ '& .Mui-selected': { bgcolor: '#ff6b35 !important', color: '#fff' } }}
+          />
+        </Box>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>{language === 'ko' ? '프롬프트 수정' : 'Edit Prompt'}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label={language === 'ko' ? '제목' : 'Title'}
+              value={editForm.title}
+              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label={language === 'ko' ? '설명' : 'Description'}
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+            />
+            <TextField
+              label={language === 'ko' ? '프롬프트 내용' : 'Prompt Text'}
+              value={editForm.promptText}
+              onChange={(e) => setEditForm({ ...editForm, promptText: e.target.value })}
+              fullWidth
+              multiline
+              rows={8}
+              sx={{ '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: '0.9rem' } }}
+            />
+            <TextField
+              select
+              label={language === 'ko' ? '상태' : 'Status'}
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value as typeof editForm.status })}
+              fullWidth
+              SelectProps={{ native: true }}
+            >
+              <option value="published">{language === 'ko' ? '공개' : 'Published'}</option>
+              <option value="pending">{language === 'ko' ? '대기' : 'Pending'}</option>
+              <option value="blocked">{language === 'ko' ? '차단' : 'Blocked'}</option>
+            </TextField>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setEditDialogOpen(false)} disabled={saving}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
+          <Button onClick={handleEditSave} disabled={saving} variant="contained" sx={{ bgcolor: '#ff6b35', '&:hover': { bgcolor: '#e55a2b' } }}>
+            {saving ? (language === 'ko' ? '저장 중...' : 'Saving...') : (language === 'ko' ? '저장' : 'Save')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Single Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{language === 'ko' ? '프롬프트 삭제' : 'Delete Prompt'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {language === 'ko' ? '정말로 이 프롬프트를 삭제하시겠습니까?' : 'Are you sure you want to delete this prompt?'}
+          </DialogContentText>
+          {promptToDelete && (
+            <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{promptToDelete.title}</Typography>
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
+          <Button onClick={handleDeleteConfirm} disabled={deleting} variant="contained" color="error">
+            {deleting ? (language === 'ko' ? '삭제 중...' : 'Deleting...') : (language === 'ko' ? '삭제' : 'Delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onClose={bulkDeleting ? undefined : () => setBulkDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: theme.palette.error.main }}>{language === 'ko' ? '일괄 삭제' : 'Bulk Delete'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {language === 'ko' ? `${selectedIds.size}개의 프롬프트를 삭제하시겠습니까?` : `Delete ${selectedIds.size} prompts?`}
+          </DialogContentText>
+          {bulkDeleting && (
+            <Box sx={{ mt: 2 }}>
+              <LinearProgress variant="determinate" value={bulkDeleteProgress} sx={{ height: 8, borderRadius: 4 }} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>{Math.round(bulkDeleteProgress)}%</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setBulkDeleteDialogOpen(false)} disabled={bulkDeleting}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
+          <Button onClick={handleBulkDeleteConfirm} disabled={bulkDeleting} variant="contained" color="error" startIcon={<DeleteSweepIcon />}>
+            {bulkDeleting ? (language === 'ko' ? '삭제 중...' : 'Deleting...') : (language === 'ko' ? '삭제' : 'Delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+
+// =============================================
 // PROMPTS APPROVAL COMPONENT
 // =============================================
 function PromptsApproval({ user, language, isDark }: ManagementProps) {
@@ -1545,17 +2011,21 @@ function PromptsApproval({ user, language, isDark }: ManagementProps) {
           )}
           <TextField
             fullWidth
+            required
             multiline
             rows={3}
-            label={language === 'ko' ? '거절 사유 (선택사항)' : 'Rejection reason (optional)'}
+            label={language === 'ko' ? '거절 사유' : 'Rejection reason'}
+            placeholder={language === 'ko' ? '거절 사유를 입력해주세요' : 'Please enter the rejection reason'}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
+            error={rejectDialogOpen && !rejectReason.trim()}
+            helperText={rejectDialogOpen && !rejectReason.trim() ? (language === 'ko' ? '거절 사유는 필수입니다' : 'Rejection reason is required') : ''}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => { setRejectDialogOpen(false); setRejectReason(''); }} disabled={processing}>{language === 'ko' ? '취소' : 'Cancel'}</Button>
-          <Button onClick={handleReject} disabled={processing} variant="contained" color="error" startIcon={<RejectIcon />}>
+          <Button onClick={handleReject} disabled={processing || !rejectReason.trim()} variant="contained" color="error" startIcon={<RejectIcon />}>
             {processing ? (language === 'ko' ? '처리 중...' : 'Processing...') : (language === 'ko' ? '거절' : 'Reject')}
           </Button>
         </DialogActions>

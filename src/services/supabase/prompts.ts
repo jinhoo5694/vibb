@@ -306,12 +306,17 @@ export async function approvePrompt(promptId: string): Promise<boolean> {
   return true;
 }
 
-// Reject a prompt (admin only)
-export async function rejectPrompt(promptId: string, reason?: string): Promise<boolean> {
+// Reject a prompt (admin only) - reason is required
+export async function rejectPrompt(promptId: string, reason: string): Promise<boolean> {
+  if (!reason.trim()) {
+    console.error('Reject reason is required');
+    return false;
+  }
+
   const { error } = await supabase.rpc('approve_content', {
     content_id: promptId,
     action: 'reject',
-    reject_reason: reason || '',
+    reject_reason: reason.trim(),
   });
 
   if (error) {
@@ -322,21 +327,8 @@ export async function rejectPrompt(promptId: string, reason?: string): Promise<b
   return true;
 }
 
-// Delete a prompt
-export async function deletePrompt(promptId: string, userId: string, isAdmin: boolean = false): Promise<boolean> {
-  // Verify ownership unless admin
-  if (!isAdmin) {
-    const { data: content } = await supabase
-      .from('contents')
-      .select('author_id')
-      .eq('id', promptId)
-      .single();
-
-    if (!content || content.author_id !== userId) {
-      return false;
-    }
-  }
-
+// Delete a prompt (admin only)
+export async function deletePrompt(promptId: string): Promise<boolean> {
   // Delete related data first
   await Promise.all([
     supabase.from('content_votes').delete().eq('content_id', promptId),
@@ -355,6 +347,150 @@ export async function deletePrompt(promptId: string, userId: string, isAdmin: bo
   if (error) {
     console.error('Error deleting prompt:', error);
     return false;
+  }
+
+  return true;
+}
+
+// Get all prompts for admin management
+export async function getPromptsForAdmin(options?: {
+  limit?: number;
+  offset?: number;
+  searchQuery?: string;
+  status?: 'all' | 'published' | 'pending' | 'blocked';
+}): Promise<Prompt[]> {
+  const { limit = 100, offset = 0, searchQuery, status = 'all' } = options || {};
+
+  let query = supabase
+    .from('contents')
+    .select(`
+      *,
+      author:author_id (id, nickname, avatar_url, email),
+      content_tags (
+        tag_id,
+        tags:tag_id (id, name)
+      )
+    `)
+    .eq('type', 'prompt');
+
+  // Apply status filter
+  if (status !== 'all') {
+    query = query.eq('content_status', status);
+  }
+
+  // Apply search if provided
+  if (searchQuery?.trim()) {
+    query = query.ilike('title', `%${searchQuery.trim()}%`);
+  }
+
+  query = query.order('created_at', { ascending: false });
+  query = query.range(offset, offset + limit - 1);
+
+  const { data: contents, error } = await query;
+
+  if (error || !contents) {
+    console.error('Error fetching prompts for admin:', error);
+    return [];
+  }
+
+  // Transform to ContentWithRelations
+  const promptsWithRelations: ContentWithRelations[] = contents.map(content => {
+    const tags = content.content_tags
+      ?.map((ct: { tags: Tag | Tag[] | null }) => {
+        if (Array.isArray(ct.tags)) return ct.tags[0];
+        return ct.tags;
+      })
+      .filter((t: Tag | null): t is Tag => t !== null) || [];
+
+    return {
+      ...content,
+      author: content.author as Profile | null,
+      tags,
+      upvote_count: content.upvote_count || 0,
+      downvote_count: content.downvote_count || 0,
+      reviews_count: 0,
+    };
+  });
+
+  return promptsWithRelations.map(contentToPrompt);
+}
+
+// Update a prompt (admin only)
+export async function updatePrompt(
+  promptId: string,
+  data: {
+    title?: string;
+    description?: string;
+    promptText?: string;
+    variables?: string[];
+    tags?: string[];
+    status?: 'draft' | 'pending' | 'published' | 'blocked';
+  }
+): Promise<boolean> {
+  const updateData: Record<string, unknown> = {};
+
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.description !== undefined) updateData.body = data.description;
+  if (data.status !== undefined) updateData.content_status = data.status;
+  if (data.promptText !== undefined || data.variables !== undefined) {
+    // Fetch current metadata first
+    const { data: current } = await supabase
+      .from('contents')
+      .select('metadata')
+      .eq('id', promptId)
+      .single();
+
+    const currentMetadata = (current?.metadata || {}) as Record<string, unknown>;
+    updateData.metadata = {
+      ...currentMetadata,
+      ...(data.promptText !== undefined && { prompt_text: data.promptText }),
+      ...(data.variables !== undefined && { variables: data.variables }),
+    };
+  }
+
+  const { error } = await supabase
+    .from('contents')
+    .update(updateData)
+    .eq('id', promptId);
+
+  if (error) {
+    console.error('Error updating prompt:', error);
+    return false;
+  }
+
+  // Update tags if provided
+  if (data.tags !== undefined) {
+    // Remove existing tags
+    await supabase.from('content_tags').delete().eq('content_id', promptId);
+
+    // Add new tags
+    for (const tagName of data.tags) {
+      // Check if tag exists
+      const { data: existingTag } = await supabase
+        .from('tags')
+        .select('id')
+        .eq('name', tagName)
+        .single();
+
+      let tagId = existingTag?.id;
+
+      // Create tag if it doesn't exist
+      if (!tagId) {
+        const { data: newTag } = await supabase
+          .from('tags')
+          .insert({ name: tagName, tag_category: 'prompt' })
+          .select('id')
+          .single();
+        tagId = newTag?.id;
+      }
+
+      // Link tag to content
+      if (tagId) {
+        await supabase
+          .from('content_tags')
+          .insert({ content_id: promptId, tag_id: tagId });
+      }
+    }
   }
 
   return true;

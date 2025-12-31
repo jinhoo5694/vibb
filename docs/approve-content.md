@@ -18,12 +18,18 @@ const approveContent = async (contentId: string) => {
 };
 
 const rejectContent = async (contentId: string, reason: string) => {
+  // reason is required
+  if (!reason.trim()) {
+    toast.error('거절 사유를 입력해주세요.');
+    return;
+  }
+
   const { error } = await supabase.rpc('approve_content', {
     content_id: contentId,
     action: 'reject',
-    reject_reason: reason
+    reject_reason: reason.trim()
   });
-  
+
   if (!error) {
     toast.success('콘텐츠가 거절되었습니다.');
   }
